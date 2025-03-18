@@ -17,7 +17,7 @@ public class Constants {
     public static final String ALTER_TABLE = "ALTER TABLE %s";
 
     public static final String ALTER_RENAME_TABLE = "RENAME TABLE %s TO %s";
-    public static final String CREATE_TABLE = "CREATE TABLE";
+    public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS";
     public static final String NULLABLE = "Nullable";
 
     public static final String NOT_NULLABLE = "NOT NULL";
