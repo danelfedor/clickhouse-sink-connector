@@ -219,7 +219,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         List<ParseTree> pt = ctx.children;
         Set<String> columnNames = new HashSet<>();
 
-        this.query.append(Constants.CREATE_TABLE).append(" ");
+        this.query.append(Constants.CREATE_FTABLE).append(" ");
         for (ParseTree tree : pt) {
 
             if (tree instanceof TableNameContext) {
@@ -240,8 +240,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     this.query.append(" ON CLUSTER `{cluster}`");
                 }
                 this.query.append("(");
-            }else if(tree instanceof MySqlParser.IfNotExistsContext) {
-                this.query.append(Constants.IF_NOT_EXISTS);
             }else if (tree instanceof MySqlParser.CreateDefinitionsContext) {
                 for (ParseTree subtree : ((MySqlParser.CreateDefinitionsContext) tree).children) {
                     if (subtree instanceof TerminalNodeImpl) {
