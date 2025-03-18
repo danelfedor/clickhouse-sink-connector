@@ -150,15 +150,13 @@ public class Utils {
      */
     public static String getTableNameFromTopic(String topicName) {
         String tableName = null;
-
-
-            // topic names is of the following format.
-            // hostname.dbName.tableName or hostname.dbName.schemaName.tableName
-            String[] splitName = topicName.split("\\.");
-            if(splitName.length >= 3) {
-                tableName = splitName[splitName.length - 1];
-            }
-
+        // topic names is of the following format.
+        // hostname.dbName.tableName or hostname.dbName.schemaName.tableName
+        String[] splitName = topicName.split("\\.");
+        if(splitName.length >= 3) {
+            tableName = splitName[splitName.length - 1];
+        }
+        tableName = tableName.toLowerCase();
         return tableName;
     }
     /**

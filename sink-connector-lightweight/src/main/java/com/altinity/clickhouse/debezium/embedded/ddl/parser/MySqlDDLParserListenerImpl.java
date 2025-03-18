@@ -58,7 +58,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         this.databaseName = overrideDatabaseName(databaseName);
 
         this.query = transformedQuery;
-        this.tableName = tableName;
+        this.tableName = tableName.toLowerCase();
 
         this.config = config;
         this.dbMetadata = new DBMetadata();
@@ -148,13 +148,15 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 }
             }
         }
+        String appendOriginalTableName = originalTableName.toLowerCase();
+        String appendNewTableName = newTableName.toLowerCase();
         // if the table name already includes the datbase name dont include it in the query.
         if(originalTableName.contains(".")) {
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(originalTableName).append(" ")
-                    .append(Constants.AS).append(" ").append(newTableName);
+            this.query.append(Constants.CREATE_TABLE).append(" ").append(appendOriginalTableName).append(" ")
+                    .append(Constants.AS).append(" ").append(appendNewTableName);
         } else
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(originalTableName).append(" ")
-                .append(Constants.AS).append(" ").append(databaseName).append(".").append(newTableName);
+            this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(appendOriginalTableName).append(" ")
+                .append(Constants.AS).append(" ").append(databaseName).append(".").append(appendNewTableName);
     }
 
     @Override
@@ -221,7 +223,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         for (ParseTree tree : pt) {
 
             if (tree instanceof TableNameContext) {
-                this.tableName = tree.getText();
+                this.tableName = tree.getText().toLowerCase();
                 // If tableName already includes the database name don't include database name in this.query
                 if(tableName.contains(".")) {
                     // split tableName into databaseName and tableName
@@ -229,7 +231,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
                     //this.query.append(tableName);
                 } else
-                    this.query.append(databaseName).append(".").append(tree.getText());
+                    this.query.append(databaseName).append(".").append(tree.getText().toLowerCase());
 
                 // If its RRMT add on CLUSTER {cluster} to QUERY.
                 boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
@@ -602,7 +604,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         for (ParseTree tree : pt) {
 
             if (tree instanceof TableNameContext) {
-                this.tableName = tree.getText();
+                this.tableName = tree.getText().toLowerCase();
                 // If the table name already include the database name dont include it in the query.
                 if(this.tableName.contains(".")) {
                     // Split database and table name.
@@ -678,7 +680,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 newTableName = alterByRenameChildren.getText();
             }
         }
-
+        newTableName = newTableName.toLowerCase();
         // If the databasename already includes the table name dont include it in the query.
         if(originalTableName.contains(".")) {
             this.query.delete(0, this.query.toString().length()).append(String.format
@@ -730,9 +732,9 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
             if (child instanceof MySqlParser.TablesContext) {
                 for (ParseTree tableNameChild : ((MySqlParser.TablesContext) child).children) {
                     if (tableNameChild instanceof MySqlParser.TableNameContext) {
-                        this.query.append(tableNameChild.getText());
+                        this.query.append(tableNameChild.getText().toLowerCase());
                     } else if (tableNameChild instanceof TerminalNodeImpl) {
-                        this.query.append(tableNameChild.getText());
+                        this.query.append(tableNameChild.getText().toLowerCase());
                     }
                 }
             } else if(child instanceof MySqlParser.IfExistsContext) {
@@ -752,8 +754,8 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 List<ParseTree> renameTableContextChildren = ((MySqlParser.RenameTableClauseContext) child).children;
 
                 if (renameTableContextChildren.size() >= 3) {
-                    originalTableName = renameTableContextChildren.get(0).getText();
-                    newTableName = renameTableContextChildren.get(2).getText();
+                    originalTableName = renameTableContextChildren.get(0).getText().toLowerCase();
+                    newTableName = renameTableContextChildren.get(2).getText().toLowerCase();
                     // If the table name already includes the database name dont include it in the query.
                     if(originalTableName.contains(".") && newTableName.contains(".")) {
                         // Split database and table name.
@@ -777,7 +779,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     public void enterTruncateTable(MySqlParser.TruncateTableContext truncateTableContext) {
         for (ParseTree child : truncateTableContext.children) {
             if (child instanceof MySqlParser.TableNameContext) {
-                this.query.append(String.format(Constants.TRUNCATE_TABLE, databaseName + "." + child.getText()));
+                this.query.append(String.format(Constants.TRUNCATE_TABLE, databaseName + "." + child.getText().toLowerCase()));
             }
         }
     }
