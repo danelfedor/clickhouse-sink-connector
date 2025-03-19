@@ -211,7 +211,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         } else {
             this.query.append(Constants.ORDER_BY).append(orderByColumns.toString());
         }
-
+        this.query.append(STORAGE_POLICY);
     }
 
     private Set<String> parseCreateTable(MySqlParser.CreateTableContext ctx, StringBuilder orderByColumns,
