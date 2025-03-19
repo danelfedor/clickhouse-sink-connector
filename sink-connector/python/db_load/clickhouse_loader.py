@@ -1,13 +1,15 @@
 # python db_load/clickhouse_myloader.py --clickhouse_host localhost  --clickhouse_schema world --dump_dir $HOME/dbdumps/world --db_user root --db_password root --threads 16 --ch_module clickhouse-client-22.5.1.2079 --mysql_source_schema world
+import os
+import sys
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 from subprocess import Popen, PIPE
 from db.mysql import is_binary_datatype
 import argparse
-import sys
 import logging
 import concurrent.futures
 import re
 import gzip
-import os
 import sys
 import time
 import glob
@@ -19,9 +21,6 @@ import datetime
 import zoneinfo
 from db.clickhouse import *
 from db_load.mysql_parser.mysql_parser import convert_to_clickhouse_table_antlr
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 
 def run_command(cmd):
@@ -433,7 +432,7 @@ def load_data(args, timezone, schema_map, clickhouse_user=None, clickhouse_passw
             # double quote escape logic https://github.com/ClickHouse/ClickHouse/issues/10624
             structure = columns.replace(
                 ",", " Nullable(String),")+" Nullable(String)"
-            cmd = f"""export TZ={timezone}; gunzip --stdout {data_file}  | sed -e 's/\\\\"/""/g' | sed -e "s/\\\\\\'/'/g" | clickhouse-client {config_file_option} --use_client_time_zone 1 -h {clickhouse_host} --query="INSERT INTO {ch_schema}.{table_name}({columns})  SELECT {transformed_columns} FROM input('{structure}') FORMAT CSV" -u{clickhouse_user} {password_option} -mn """
+            cmd = f"""export TZ={timezone}; gunzip --stdout {data_file}  | sed -e 's/\\\\"/""/g' | sed -e "s/\\\\\\'/'/g" | clickhouse-client --use_client_time_zone 1 -h {clickhouse_host} --query="INSERT INTO {ch_schema}.{table_name}({columns})  SELECT {transformed_columns} FROM input('{structure}') FORMAT CSV" -u{clickhouse_user} {password_option} -mn """
             execute_load(cmd)
 
 
@@ -506,7 +505,7 @@ def load_data_mysqlshell(args, timezone, schema_map, clickhouse_user=None, click
                         else:
                             structure += " String"
 
-                cmd = f"""export TZ={timezone}; zstd -d --stdout {data_file}  | clickhouse-client {config_file_option} --use_client_time_zone 1 --throw_if_no_data_to_insert=0  --max_partitions_per_insert_block=1000 -h {clickhouse_host} --query="INSERT INTO {ch_schema}.{table_name}({columns})  SELECT {transformed_columns} FROM input('{structure}') FORMAT TSV" -u{clickhouse_user} {password_option} -mn """
+                cmd = f"""export TZ={timezone}; zstd -d --stdout {data_file}  | clickhouse-client --use_client_time_zone 1 --throw_if_no_data_to_insert=0  --max_partitions_per_insert_block=1000 -h {clickhouse_host} --query="INSERT INTO {ch_schema}.{table_name}({columns})  SELECT {transformed_columns} FROM input('{structure}') FORMAT TSV" -u{clickhouse_user} {password_option} -mn """
                 futures.append(executor.submit(execute_load, cmd))
 
         for future in concurrent.futures.as_completed(futures):
