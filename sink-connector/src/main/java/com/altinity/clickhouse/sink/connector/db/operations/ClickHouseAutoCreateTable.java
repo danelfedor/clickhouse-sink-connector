@@ -122,11 +122,12 @@ public class ClickHouseAutoCreateTable extends ClickHouseTableOperationsBase{
 
             createTableSyntax.append(ORDER_BY).append("(");
             createTableSyntax.append(primaryKey.stream().map(Object::toString).collect(Collectors.joining(",")));
-            createTableSyntax.append(")");
+            createTableSyntax.append(") ");
         } else {
             // ToDO:
             createTableSyntax.append(ORDER_BY_TUPLE);
         }
+        createTableSyntax.append(STORAGE_POLICY);
        return createTableSyntax.toString();
     }
 
