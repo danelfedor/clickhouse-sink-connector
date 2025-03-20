@@ -31,5 +31,5 @@ public class ClickHouseDbConstants {
 
     public static final String CHECK_DB_EXISTS_SQL = "SELECT name from system.databases where name='%s'";
 
-    public static final String STORAGE_POLICY = "SETTINGS storage_policy = 'policy_1";
+    public static final String STORAGE_POLICY = "SETTINGS storage_policy = 'policy_1'";
 }
