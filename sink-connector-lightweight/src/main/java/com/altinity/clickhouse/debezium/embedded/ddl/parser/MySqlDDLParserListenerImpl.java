@@ -725,14 +725,27 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     @Override
     public void enterDropTable(MySqlParser.DropTableContext dropTableContext) {
         log.debug("DROP TABLE enter");
+        String tableName;
         this.query.append(Constants.DROP_TABLE).append(" ");
         for (ParseTree child : dropTableContext.children) {
             if (child instanceof MySqlParser.TablesContext) {
                 for (ParseTree tableNameChild : ((MySqlParser.TablesContext) child).children) {
                     if (tableNameChild instanceof MySqlParser.TableNameContext) {
-                        this.query.append(tableNameChild.getText().toLowerCase());
+                        //this.query.append(tableNameChild.getText().toLowerCase());
+                        tableName = tableNameChild.getText().toLowerCase();
+                        if(tableName.contains(".")) {
+                            String[] tableNameSplit = tableName.split("\\.");
+                            this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
+                        } else
+                            this.query.append(databaseName).append(".").append(tableName);
                     } else if (tableNameChild instanceof TerminalNodeImpl) {
-                        this.query.append(tableNameChild.getText().toLowerCase());
+                        //this.query.append(tableNameChild.getText().toLowerCase());
+                        tableName = tableNameChild.getText().toLowerCase();
+                        if(tableName.contains(".")) {
+                            String[] tableNameSplit = tableName.split("\\.");
+                            this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
+                        } else
+                            this.query.append(databaseName).append(".").append(tableName);
                     }
                 }
             } else if(child instanceof MySqlParser.IfExistsContext) {
