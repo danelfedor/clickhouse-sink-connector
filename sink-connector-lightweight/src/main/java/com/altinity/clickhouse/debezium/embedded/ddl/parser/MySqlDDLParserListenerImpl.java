@@ -568,7 +568,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
             this.query.append(" ").append(columnPositionModifier);
         }
 
-        if (isAlterChangeColumn) {
+        if (isAlterChangeColumn && columnName != null && !columnName.equals(newColumnName)) {
             postProcessModifyColumn(this.tableName, columnName, newColumnName, columnType);
         }
 
