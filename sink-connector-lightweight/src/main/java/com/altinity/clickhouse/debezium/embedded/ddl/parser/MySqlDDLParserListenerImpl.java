@@ -494,7 +494,8 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     newColumnName = newColumnChild.getText();
                 }
             } else if (columnChild instanceof MySqlParser.ColumnDefinitionContext) {
-
+                String colDataTypeDefinition = (columnChild.getText());
+                columnType = getClickHouseDataType(colDataTypeDefinition, columnChild, columnName);
                 for (ParseTree columnDefChild : ((MySqlParser.ColumnDefinitionContext) columnChild).children) {
                     if (columnDefChild instanceof MySqlParser.NullColumnConstraintContext) {
                         nullExplicitlySet = true;
@@ -508,12 +509,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     } else if (columnDefChild instanceof MySqlParser.DefaultColumnConstraintContext) {
                         if (columnDefChild.getChildCount() >= 2) {
                             defaultModifier = "DEFAULT " + columnDefChild.getChild(1).getText();
-                        }
-                    } else {
-                        columnType = (columnDefChild.getText());
-                        String chDataType = getClickHouseDataType(columnType, columnChild, columnName);
-                        if (chDataType != null) {
-                            columnType = chDataType;
                         }
                     }
                 }
