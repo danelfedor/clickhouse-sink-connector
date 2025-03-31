@@ -484,10 +484,14 @@ public class DebeziumChangeEventCapture {
                 if (DDL != null && DDL.isEmpty() == false)
                 {
                     log.info("***** DDL received, Flush all existing records");
-                    this.executor.pause();
-
+                    int count = 0;
+                    // wait queue empty to ensure execute order
+                    while(!this.executor.getQueue().isEmpty()) {
+                        Thread.sleep(1000);
+                        count++;
+                        log.debug("Wait Queue empty to execute ddl, sleep time :" + count);
+                    }
                     performDDLOperation(DDL, props, sr, config, recordCommitter, record, lastRecordInBatch);
-                    this.executor.resume();
                 }
 
             } else {
