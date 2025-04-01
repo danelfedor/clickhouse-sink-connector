@@ -486,7 +486,7 @@ public class DebeziumChangeEventCapture {
                     log.info("***** DDL received, Flush all existing records");
                     int count = 0;
                     // wait queue empty to ensure execute order
-                    while(!this.executor.getQueue().isEmpty()) {
+                    while(!this.records.isEmpty()) {
                         Thread.sleep(1000);
                         count++;
                         log.debug("Wait Queue empty to execute ddl, sleep time :" + count);
