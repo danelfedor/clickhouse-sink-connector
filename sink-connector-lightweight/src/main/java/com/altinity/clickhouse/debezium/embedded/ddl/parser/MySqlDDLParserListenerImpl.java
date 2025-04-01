@@ -138,25 +138,22 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         String originalTableName = "";
         String newTableName = "";
 
-
         while(it.hasNext()) {
             ParseTree tree = it.next();
             if(tree instanceof MySqlParser.TableNameContext) {
-                originalTableName = tree.getText();
+                originalTableName = tree.getText().toLowerCase();
                 if(it.next().getText().equalsIgnoreCase(Constants.LIKE)) {
-                    newTableName = it.next().getText();
+                    newTableName = it.next().getText().toLowerCase();
                 }
             }
         }
-        String appendOriginalTableName = originalTableName.toLowerCase();
-        String appendNewTableName = newTableName.toLowerCase();
         // if the table name already includes the datbase name dont include it in the query.
         if(originalTableName.contains(".")) {
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(appendOriginalTableName).append(" ")
-                    .append(Constants.AS).append(" ").append(appendNewTableName);
+            this.query.append(Constants.CREATE_TABLE).append(" ").append(originalTableName).append(" ")
+                    .append(Constants.AS).append(" ").append(newTableName);
         } else
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(appendOriginalTableName).append(" ")
-                .append(Constants.AS).append(" ").append(databaseName).append(".").append(appendNewTableName);
+            this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(originalTableName).append(" ")
+                .append(Constants.AS).append(" ").append(databaseName).append(".").append(newTableName);
     }
 
     @Override
