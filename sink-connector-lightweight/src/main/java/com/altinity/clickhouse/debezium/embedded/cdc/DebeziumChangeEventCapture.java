@@ -434,7 +434,7 @@ public class DebeziumChangeEventCapture {
         if (!currentBatch.isEmpty()) {
             addVersion(currentBatch);
             appendToRecords(currentBatch, config);
-            currentBatch.clear();
+            currentBatch = new ArrayList<ClickHouseStruct>();
         }
     }
 
