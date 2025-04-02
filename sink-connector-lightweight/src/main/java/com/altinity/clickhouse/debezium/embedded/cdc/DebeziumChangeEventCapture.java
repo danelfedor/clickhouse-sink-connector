@@ -29,6 +29,7 @@ import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.flogger.Flogger;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
@@ -81,7 +82,7 @@ public class DebeziumChangeEventCapture {
     @Getter
     @Setter
     private String lastIgnoredDDL;
-
+    private List<ClickHouseStruct> currentBatch = new ArrayList<ClickHouseStruct>();
     public DebeziumChangeEventCapture() {
         singleThreadDebeziumEventExecutor = Executors.newFixedThreadPool(1);
         this.debeziumJdbcStorageOperations = new DebeziumJdbcStorageOperations();
@@ -131,26 +132,7 @@ public class DebeziumChangeEventCapture {
                 @Override
                 public void handleBatch(List<ChangeEvent<SourceRecord, SourceRecord>> list,
                                         DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> recordCommitter) throws InterruptedException {
-
-                    List<ClickHouseStruct> batch = new ArrayList<ClickHouseStruct>();
-                    for(int i = 0; i < list.size(); i++) {
-                        ChangeEvent<SourceRecord, SourceRecord> record = list.get(i);
-                        boolean lastRecordInBatch = false;
-                        if(i == list.size() - 1) {
-                            lastRecordInBatch = true;
-                        }
-                        ClickHouseStruct chStruct = processEveryChangeRecord(props, record, debeziumRecordParserService, config, recordCommitter, lastRecordInBatch);
-                        if(chStruct != null) {
-                            batch.add(chStruct);
-                        }
-                    }
-                    // Add sequence number.
-                    addVersion(batch);
-
-
-                    if(batch.size() > 0) {
-                        appendToRecords(batch, config);
-                    }
+                        processChangeRecord(props, list, debeziumRecordParserService, config, recordCommitter);
                 }
             });
             this.engine = changeEventBuilder
@@ -359,12 +341,9 @@ public class DebeziumChangeEventCapture {
 
         // Check if configuration is set to retry DDL
         String retryDDL = props.getProperty(SinkConnectorLightWeightConfig.DDL_RETRY.toString());
-        boolean retryDDLProperty = false;
-        if(retryDDL != null && retryDDL.equalsIgnoreCase("true" )) {
-            retryDDLProperty = true;
-        }
+        boolean retryDDLProperty = retryDDL != null && retryDDL.equalsIgnoreCase("true");
 
-        while(numRetries < MAX_DDL_RETRIES) {
+        while(true) {
             try {
                 executeDDL(clickHouseQuery.toString(), writer);
                 DebeziumOffsetManagement.acknowledgeRecords(recordCommitter,
@@ -372,13 +351,14 @@ public class DebeziumChangeEventCapture {
                 break;
             } catch (Exception e) {
                 log.error("Error executing DDL", e);
-                if(retryDDLProperty == false) {
+                if(!retryDDLProperty) {
                     break;
                 }
                 try {
                     Thread.sleep(SLEEP_TIME);
                 } catch (InterruptedException ex) {
                     log.error("Error sleeping", ex);
+                    Thread.currentThread().interrupt();
                 }
                 numRetries++;
             }
@@ -443,77 +423,96 @@ public class DebeziumChangeEventCapture {
     }
 
     /**
+     * Function to add records in current batch to queue
+     * as received from Debezium
+     *
+     * @param config
+     */
+
+    private void appendToRecords(ClickHouseSinkConnectorConfig config) {
+        // add records in current batch to queue
+        if (!currentBatch.isEmpty()) {
+            addVersion(currentBatch);
+            appendToRecords(currentBatch, config);
+            currentBatch.clear();
+        }
+    }
+
+    /**
      * Function to process every change event record
      * as received from Debezium
      *
-     * @param record ChangeEvent Record
+     * @param list List of ChangeEvent Record
      */
-    private ClickHouseStruct processEveryChangeRecord(Properties props, ChangeEvent<SourceRecord, SourceRecord> record,
+    private void processChangeRecord(Properties props, List<ChangeEvent<SourceRecord, SourceRecord>> list,
                                           DebeziumRecordParserService debeziumRecordParserService,
                                           ClickHouseSinkConnectorConfig config,
                                           DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>>
-                                                  recordCommitter, boolean lastRecordInBatch) {
-        ClickHouseStruct chStruct = null;
+                                                  recordCommitter) {
+        for(int i = 0; i < list.size(); i++) {
+            ChangeEvent<SourceRecord, SourceRecord> event = list.get(i);
+            boolean lastRecordInBatch = i == list.size() - 1;
+            try {
+                SourceRecord sr = event.value();
+                Struct struct = (Struct) sr.value();
 
-        try {
-
-            SourceRecord sr = record.value();
-            Struct struct = (Struct) sr.value();
-
-            if (struct == null) {
-                log.debug(String.format("STRUCT EMPTY - not a valid CDC record + Record(%s)", record.toString()));
-                return null;
-            }
-            if (struct.schema() == null) {
-                log.error("SCHEMA EMPTY");
-            }
-
-            List<Field> schemaFields = struct.schema().fields();
-            if (schemaFields == null) {
-                return null;
-            }
-            Field matchingDDLField = schemaFields.stream()
-                    .filter(f -> "DDL".equalsIgnoreCase(f.name()))
-                    .findAny()
-                    .orElse(null);
-            if (matchingDDLField != null) {
-                String DDL = (String) struct.get("ddl");
-                log.debug("Source DB DDL: " + DDL);
-
-
-                if (DDL != null && DDL.isEmpty() == false)
-                {
-                    log.info("***** DDL received, Flush all existing records");
-                    int count = 0;
-                    // wait queue empty to ensure execute order
-                    while(!this.records.isEmpty()) {
-                        Thread.sleep(1000);
-                        count++;
-                        log.debug("Wait Queue empty to execute ddl, sleep time :" + count);
-                    }
-                    performDDLOperation(DDL, props, sr, config, recordCommitter, record, lastRecordInBatch);
+                if (struct == null || struct.schema() == null || struct.schema().fields() == null) {
+                    log.debug("STRUCT EMPTY - not a valid CDC record + Record({})", event);
+                    continue;
                 }
 
-            } else {
-                chStruct = debeziumRecordParserService.parse(record, recordCommitter, lastRecordInBatch);
-                try {
-                    if(chStruct != null) {
-                        ReplicationStatusSingleton.getInstance().setReplicationLag(chStruct.getReplicationLag());
-                        ReplicationStatusSingleton.getInstance().setLastRecordTimestamp(chStruct.getTs_ms());
-                        ReplicationStatusSingleton.getInstance().setBinLogFile(chStruct.getFile());
-                        ReplicationStatusSingleton.getInstance().setBinLogPosition(String.valueOf(chStruct.getPos()));
-                        ReplicationStatusSingleton.getInstance().setGtid(String.valueOf(chStruct.getGtid()));
-                    }
-                } catch(Exception e) {
-                    log.error("Error retrieving status metrics: Exception" + e.toString());
-                }
-            }
+                List<Field> schemaFields = struct.schema().fields();
 
-        } catch (Exception e) {
-            log.error("Exception processing record", e);
+                Field matchingDDLField = schemaFields.stream()
+                        .filter(f -> "DDL".equalsIgnoreCase(f.name()))
+                        .findAny()
+                        .orElse(null);
+
+                if (matchingDDLField != null) {
+                    String ddl = (String) struct.get("ddl");
+                    log.debug("Source DB DDL: {} ", ddl);
+
+                    if (ddl != null && !ddl.isEmpty()) {
+                        log.info("***** DDL received, Flush all existing records.");
+
+                        int count = 0;
+                        // wait queue empty to ensure execute order
+                        while (!this.records.isEmpty()) {
+                            Thread.sleep(1000);
+                            count++;
+                            log.debug("Wait Queue empty to execute ddl, sleep time {}", count);
+                        }
+                        performDDLOperation(ddl, props, sr, config, recordCommitter, event, lastRecordInBatch);
+                    }
+
+                } else {
+                    ClickHouseStruct chStruct = debeziumRecordParserService.parse(event, recordCommitter, lastRecordInBatch);
+                    try {
+                        if (chStruct != null) {
+                            ReplicationStatusSingleton.getInstance().setReplicationLag(chStruct.getReplicationLag());
+                            ReplicationStatusSingleton.getInstance().setLastRecordTimestamp(chStruct.getTs_ms());
+                            ReplicationStatusSingleton.getInstance().setBinLogFile(chStruct.getFile());
+                            ReplicationStatusSingleton.getInstance().setBinLogPosition(String.valueOf(chStruct.getPos()));
+                            ReplicationStatusSingleton.getInstance().setGtid(String.valueOf(chStruct.getGtid()));
+
+                            currentBatch.add(chStruct);
+                        }
+                    } catch (Exception e) {
+                        log.error("Error retrieving status metrics: Exception {}", e.toString());
+                    }
+                }
+
+            } catch (InterruptedException e) { // Compliant; the interrupted state is restored
+                log.warn("Thread Interrupted!", e);
+                /* Clean up whatever needs to be handled before interrupting  */
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                log.error("Exception processing record", e);
+            }
+            if (lastRecordInBatch) {
+                appendToRecords(config);
+            }
         }
-
-        return chStruct;
     }
 
     @VisibleForTesting
@@ -524,11 +523,10 @@ public class DebeziumChangeEventCapture {
     private boolean isSnapshotDDL(SourceRecord sr) {
         boolean snapshotDDL = false;
 
-        if(sr.sourceOffset() != null) {
-            if (sr.sourceOffset().containsKey("snapshot")) {
+        if(sr.sourceOffset() != null && sr.sourceOffset().containsKey("snapshot")) {
                 snapshotDDL = (Boolean) sr.sourceOffset().get("snapshot");
-            }
         }
+
 
         return snapshotDDL;
     }
