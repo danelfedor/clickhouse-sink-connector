@@ -82,7 +82,7 @@ public class DebeziumChangeEventCapture {
     @Getter
     @Setter
     private String lastIgnoredDDL;
-    private List<ClickHouseStruct> currentBatch = new ArrayList<ClickHouseStruct>();
+    private List<ClickHouseStruct> currentBatch = new ArrayList<>();
     public DebeziumChangeEventCapture() {
         singleThreadDebeziumEventExecutor = Executors.newFixedThreadPool(1);
         this.debeziumJdbcStorageOperations = new DebeziumJdbcStorageOperations();
@@ -434,7 +434,7 @@ public class DebeziumChangeEventCapture {
         if (!currentBatch.isEmpty()) {
             addVersion(currentBatch);
             appendToRecords(currentBatch, config);
-            currentBatch = new ArrayList<ClickHouseStruct>();
+            currentBatch = new ArrayList<>();
         }
     }
 
@@ -474,7 +474,7 @@ public class DebeziumChangeEventCapture {
 
                     if (ddl != null && !ddl.isEmpty()) {
                         log.info("***** DDL received, Flush all existing records.");
-
+                        appendToRecords(config);
                         int count = 0;
                         // wait queue empty to ensure execute order
                         while (!this.records.isEmpty()) {
