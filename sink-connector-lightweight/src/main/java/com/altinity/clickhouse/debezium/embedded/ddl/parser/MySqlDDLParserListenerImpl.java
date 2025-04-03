@@ -228,13 +228,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     tableName = tableName.split("\\.")[1];
                 }
                 this.query.append(databaseName).append(".").append(tree.getText().toLowerCase());
-
-                // If its RRMT add on CLUSTER {cluster} to QUERY.
-                boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
-                        .AUTO_CREATE_TABLES_REPLICATED.toString());
-                if(isReplicatedReplacingMergeTree) {
-                    this.query.append(" ON CLUSTER `{cluster}`");
-                }
                 this.query.append("(");
             }else if (tree instanceof MySqlParser.CreateDefinitionsContext) {
                 for (ParseTree subtree : ((MySqlParser.CreateDefinitionsContext) tree).children) {
