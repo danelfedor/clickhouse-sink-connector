@@ -147,13 +147,16 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 }
             }
         }
-        // if the table name already includes the datbase name dont include it in the query.
-        if(originalTableName.contains(".")) {
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(originalTableName).append(" ")
-                    .append(Constants.AS).append(" ").append(newTableName);
-        } else
-            this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(originalTableName).append(" ")
-                .append(Constants.AS).append(" ").append(databaseName).append(".").append(newTableName);
+        if (originalTableName.contains(".")) {
+            originalTableName = originalTableName.split("\\.")[1];
+        }
+        if (newTableName.contains(".")) {
+            newTableName = newTableName.split("\\.")[1];
+        }
+        newTableName = newTableName.toLowerCase();
+        originalTableName = originalTableName.toLowerCase();
+        this.query.append(Constants.CREATE_TABLE).append(" ").append(databaseName).append(".").append(originalTableName).append(" ")
+            .append(Constants.AS).append(" ").append(databaseName).append(".").append(newTableName);
     }
 
     @Override
@@ -221,14 +224,10 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
 
             if (tree instanceof TableNameContext) {
                 this.tableName = tree.getText().toLowerCase();
-                // If tableName already includes the database name don't include database name in this.query
-                if(tableName.contains(".")) {
-                    // split tableName into databaseName and tableName
-                    String[] tableNameSplit = tableName.split("\\.");
-                    this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
-                    //this.query.append(tableName);
-                } else
-                    this.query.append(databaseName).append(".").append(tree.getText().toLowerCase());
+                if (tableName.contains(".")) {
+                    tableName = tableName.split("\\.")[1];
+                }
+                this.query.append(databaseName).append(".").append(tree.getText().toLowerCase());
 
                 // If its RRMT add on CLUSTER {cluster} to QUERY.
                 boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
@@ -578,11 +577,11 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
      */
     public void postProcessModifyColumn(String tableName, String oldCol, String newCol, String dataType) {
         this.query.append("\n");
+        if (tableName.contains(".")) {
+            tableName = tableName.split("\\.")[1];
+        }
         // If the tableName already includes the databaseName dont include databaseName in this.query
-        if(tableName.contains(".")) {
-            this.query.append(String.format("ALTER TABLE %s RENAME COLUMN %s to %s", tableName, oldCol, newCol));
-        } else
-            this.query.append(String.format("ALTER TABLE %s RENAME COLUMN %s to %s", databaseName + "." + tableName, oldCol, newCol));
+        this.query.append(String.format("ALTER TABLE %s RENAME COLUMN %s to %s", databaseName + "." + tableName, oldCol, newCol));
 
     }
 
@@ -670,14 +669,17 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 newTableName = alterByRenameChildren.getText();
             }
         }
+        if (originalTableName.contains(".")) {
+            originalTableName = originalTableName.split("\\.")[1];
+        }
+        if (newTableName.contains(".")) {
+            newTableName = newTableName.split("\\.")[1];
+        }
         newTableName = newTableName.toLowerCase();
+        originalTableName = originalTableName.toLowerCase();
         // If the databasename already includes the table name dont include it in the query.
-        if(originalTableName.contains(".")) {
-            this.query.delete(0, this.query.toString().length()).append(String.format
-                    (Constants.ALTER_RENAME_TABLE, originalTableName, newTableName));
-        } else
-            this.query.delete(0, this.query.toString().length()).append(String.format
-                (Constants.ALTER_RENAME_TABLE, databaseName + "." + originalTableName, databaseName + "." + newTableName));
+        this.query.delete(0, this.query.toString().length()).append(String.format
+            (Constants.ALTER_RENAME_TABLE, databaseName + "." + originalTableName, databaseName + "." + newTableName));
 
     }
 
@@ -725,19 +727,17 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     if (tableNameChild instanceof MySqlParser.TableNameContext) {
                         //this.query.append(tableNameChild.getText().toLowerCase());
                         tableName = tableNameChild.getText().toLowerCase();
-                        if(tableName.contains(".")) {
-                            String[] tableNameSplit = tableName.split("\\.");
-                            this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
-                        } else
-                            this.query.append(databaseName).append(".").append(tableName);
+                        if (tableName.contains(".")) {
+                            tableName = tableName.split("\\.")[1];
+                        }
+                        this.query.append(databaseName).append(".").append(tableName);
                     } else if (tableNameChild instanceof TerminalNodeImpl) {
                         //this.query.append(tableNameChild.getText().toLowerCase());
                         tableName = tableNameChild.getText().toLowerCase();
-                        if(tableName.contains(".")) {
-                            String[] tableNameSplit = tableName.split("\\.");
-                            this.query.append(this.databaseName).append(".").append(tableNameSplit[1]);
-                        } else
-                            this.query.append(databaseName).append(".").append(tableName);
+                        if (tableName.contains(".")) {
+                            tableName = tableName.split("\\.")[1];
+                        }
+                        this.query.append(databaseName).append(".").append(tableName);
                     }
                 }
             } else if(child instanceof MySqlParser.IfExistsContext) {
@@ -759,16 +759,15 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 if (renameTableContextChildren.size() >= 3) {
                     originalTableName = renameTableContextChildren.get(0).getText().toLowerCase();
                     newTableName = renameTableContextChildren.get(2).getText().toLowerCase();
+                    if (originalTableName.contains(".")) {
+                        originalTableName = originalTableName.split("\\.")[1];
+                    }
+                    if (newTableName.contains(".")) {
+                        newTableName = newTableName.split("\\.")[1];
+                    }
                     // If the table name already includes the database name dont include it in the query.
-                    if(originalTableName.contains(".") && newTableName.contains(".")) {
-                        // Split database and table name.
-                        String[] databaseAndTableNameArray = originalTableName.split("\\.");
-                        String[] newDatabaseAndTableNameArray = newTableName.split("\\.");
-                        this.query.append(this.databaseName).append(".").append(databaseAndTableNameArray[1]).append(" to ").
-                                append(this.databaseName).append(".").append(newDatabaseAndTableNameArray[1]);
-                    } else
-                        this.query.append(databaseName).append(".").append(originalTableName).append(" to ").
-                                append(databaseName).append(".").append(newTableName);
+                    this.query.append(databaseName).append(".").append(originalTableName).append(" to ").
+                            append(databaseName).append(".").append(newTableName);
                 }
             } else if(child instanceof TerminalNodeImpl) {
                 if (((TerminalNodeImpl) child).symbol.getType() == MySqlParser.COMMA) {
