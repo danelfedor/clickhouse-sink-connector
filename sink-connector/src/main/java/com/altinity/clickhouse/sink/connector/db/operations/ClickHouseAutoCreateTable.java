@@ -99,12 +99,12 @@ public class ClickHouseAutoCreateTable extends ClickHouseTableOperationsBase{
 
         if(isNewReplacingMergeTreeEngine == true ){
             if(useReplicatedReplacingMergeTree == true) {
-                createTableSyntax.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s)", VERSION_COLUMN, isDeletedColumn));
+                createTableSyntax.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s, %s)", CLUSTER_STR, VERSION_COLUMN, isDeletedColumn));
             } else
                 createTableSyntax.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(",").append(isDeletedColumn).append(")");
         } else {
             if(useReplicatedReplacingMergeTree == true) {
-                createTableSyntax.append(String.format("Engine=ReplicatedReplacingMergeTree(%s)", VERSION_COLUMN));
+                createTableSyntax.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s)", CLUSTER_STR, VERSION_COLUMN));
             } else
                 createTableSyntax.append("ENGINE = ReplacingMergeTree(").append(VERSION_COLUMN).append(")");
         }
