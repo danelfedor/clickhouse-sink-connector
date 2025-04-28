@@ -52,7 +52,9 @@ public class ClickHouseAutoCreateTable extends ClickHouseTableOperationsBase{
                                               String rmtDeleteColumn) {
 
         StringBuilder createTableSyntax = new StringBuilder();
-
+        if (tableName.contains(".")) {
+            tableName = tableName.split("\\.")[1];
+        }
         createTableSyntax.append(CREATE_TABLE).append(" ").append(databaseName).append(".").append("`").append(tableName).append("`");
         createTableSyntax.append("(");
         for(Field f: fields) {

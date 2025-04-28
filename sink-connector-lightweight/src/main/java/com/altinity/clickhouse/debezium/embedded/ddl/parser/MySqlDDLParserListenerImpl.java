@@ -227,7 +227,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 if (tableName.contains(".")) {
                     tableName = tableName.split("\\.")[1];
                 }
-                this.query.append(databaseName).append(".").append(tree.getText().toLowerCase());
+                this.query.append(databaseName).append(".").append(tableName);
                 this.query.append("(");
             }else if (tree instanceof MySqlParser.CreateDefinitionsContext) {
                 for (ParseTree subtree : ((MySqlParser.CreateDefinitionsContext) tree).children) {
