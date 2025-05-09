@@ -62,8 +62,7 @@ public class SourceRecordParserService implements DebeziumRecordParserService {
                             ClickHouseConverter.CDC_OPERATION.CREATE, committer, lastRecordInBatch);
                 } else if (operation.equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.UPDATE.getOperation())) {
                     // Updates.
-                    chStruct = readBeforeOrAfterSection(sourceObjStruct, record, SinkRecordColumns.AFTER,
-                            ClickHouseConverter.CDC_OPERATION.UPDATE, committer, lastRecordInBatch);
+                    chStruct = createUpdateStruct(sourceObjStruct, record, committer, lastRecordInBatch);
                 } else if (operation.equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.DELETE.getOperation())) {
                     // Deletes.
                     chStruct = readBeforeOrAfterSection(sourceObjStruct, record, SinkRecordColumns.BEFORE,
@@ -76,6 +75,44 @@ public class SourceRecordParserService implements DebeziumRecordParserService {
         }
 
         return chStruct;
+    }
+
+    private Struct parseJsonObj(String afterSection) {
+        JSONParser parser = new JSONParser();
+        Struct afterStruct = null;
+        try {
+            SchemaBuilder sb = SchemaBuilder.struct();
+            JSONObject jsonObject = (JSONObject) parser.parse(afterSection);
+            if (jsonObject != null) {
+                for (Object key : jsonObject.keySet()) {
+                    if (key instanceof String) {
+                        ConnectSchema valueSchema = new ConnectSchema(ConnectSchema.schemaType(jsonObject.get(key).getClass()));
+                        if (valueSchema.type() == Schema.Type.MAP) {
+                            sb.field((String) key, Schema.STRING_SCHEMA);
+                        } else {
+                            sb.field((String) key, new ConnectSchema(ConnectSchema.schemaType(jsonObject.get(key).getClass())));
+                        }
+                    }
+                }
+                Schema kafkaConnectSchema = sb.build();
+                afterStruct = new Struct(kafkaConnectSchema);
+
+                for (Object key : jsonObject.keySet()) {
+                    if (key instanceof String && jsonObject.containsKey(key)) {
+                        Object value = jsonObject.get(key);
+                        if (value instanceof Map) {
+                            afterStruct.put((String) key, value.toString());
+                        } else {
+                            afterStruct.put((String) key, jsonObject.get(key));
+                        }
+                    }
+                }
+            }
+        } catch (ParseException e) {
+            log.error("Error parsing JSON", e);
+            throw new RuntimeException(e);
+        }
+        return afterStruct;
     }
 
     private ClickHouseStruct readBeforeOrAfterSection(Map<String, Object> convertedValue,
@@ -94,54 +131,15 @@ public class SourceRecordParserService implements DebeziumRecordParserService {
             Struct beforeStruct = null;
             Struct afterStruct = null;
 
-            if(beforeSection != null && beforeSection instanceof  Struct) {
+            if (beforeSection != null && beforeSection instanceof Struct) {
                 beforeStruct = (Struct) beforeSection;
             }
 
-            if(afterSection != null ) {
-                if(afterSection instanceof Struct) {
+            if (afterSection != null) {
+                if (afterSection instanceof Struct) {
                     afterStruct = (Struct) afterSection;
-                } else if(afterSection instanceof String) {
-                    JSONParser parser = new JSONParser();
-                    Object obj = null;
-                    try {
-                        List<Field> fields = new ArrayList<Field>();
-                        SchemaBuilder sb = SchemaBuilder.struct();
-                        JSONObject jsonObject = (JSONObject) parser.parse((String) afterSection);
-                        if(jsonObject != null) {
-                            int index = 0;
-                            for (Object key : jsonObject.keySet()) {
-                                if(key instanceof  String) {
-
-                                    ConnectSchema valueSchema = new ConnectSchema(ConnectSchema.schemaType(jsonObject.get(key).getClass()));
-                                    if(valueSchema.type() == Schema.Type.MAP) {
-                                        sb.field((String) key, Schema.STRING_SCHEMA);
-
-                                    } else {
-                                        sb.field((String) key, new ConnectSchema(ConnectSchema.schemaType(jsonObject.get(key).getClass())));
-                                    }
-                                }
-                            }
-                            Schema kafkaConnectSchema = sb.build();
-                            afterStruct = new Struct(kafkaConnectSchema);
-
-                            for (Object key : jsonObject.keySet()) {
-                                if(key instanceof  String && jsonObject.containsKey(key)) {
-                                    Object value = jsonObject.get(key);
-                                    if(value instanceof Map) {
-                                        afterStruct.put((String) key, value.toString());
-                                    } else {
-                                        afterStruct.put((String) key, jsonObject.get(key));
-                                    }
-                                }
-                            }
-                        }
-                    } catch (ParseException e) {
-                        log.error("Error parsing JSON", e);
-                        throw new RuntimeException(e);
-                    }
-
-
+                } else if (afterSection instanceof String) {
+                    afterStruct = parseJsonObj((String) afterSection);
                 }
             }
             chStruct = new ClickHouseStruct(0L,
@@ -157,5 +155,30 @@ public class SourceRecordParserService implements DebeziumRecordParserService {
 
         return chStruct;
     }
-}
 
+    private ClickHouseStruct createUpdateStruct(Map<String, Object> convertedValue, ChangeEvent<SourceRecord, SourceRecord> record,
+                                                      DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> committer,
+                                                      boolean lastRecordInBatch) {
+
+        Object beforeSection = convertedValue.get(SinkRecordColumns.BEFORE);
+        Object afterSection = convertedValue.get(SinkRecordColumns.AFTER);
+
+        Struct beforeStruct = null;
+        Struct afterStruct = null;
+
+        if(beforeSection instanceof  Struct) {
+            beforeStruct = (Struct) beforeSection;
+        }
+        if(afterSection != null ) {
+            if(afterSection instanceof Struct) {
+                afterStruct = (Struct) afterSection;
+            } else if(afterSection instanceof String) {
+                afterStruct = parseJsonObj((String)afterSection);
+            }
+        }
+        return new ClickHouseStruct(0L,
+                record.value().topic(), (Struct) record.value().key(), 0,
+                record.value().timestamp(), beforeStruct, afterStruct,
+                convertedValue, ClickHouseConverter.CDC_OPERATION.UPDATE, record, committer, lastRecordInBatch);
+    }
+}
