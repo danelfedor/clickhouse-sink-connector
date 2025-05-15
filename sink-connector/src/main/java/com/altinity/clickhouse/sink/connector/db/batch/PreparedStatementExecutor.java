@@ -17,6 +17,7 @@ import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.data.ClickHouseDataType;
 import com.clickhouse.jdbc.ClickHouseConnection;
 import com.google.common.collect.Lists;
+import org.apache.avro.JsonProperties;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -143,6 +144,10 @@ public class PreparedStatementExecutor {
                     if (CdcRecordState.CDC_RECORD_STATE_BEFORE == getCdcSectionBasedOnOperation(record.getCdcOperation())) {
                         insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
                                 true, config, columnToDataTypeMap, engine, tableName);
+                        // 这里如果是update修改过来的delete 应该能获取到after信息，改回去update处理第二条
+                        if (record.getAfterStruct() != null && record.getAfterModifiedFields() != null) {
+                            record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.UPDATE);
+                        }
                     } else if (CdcRecordState.CDC_RECORD_STATE_AFTER == getCdcSectionBasedOnOperation(record.getCdcOperation())) {
                         insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
                                 false, config, columnToDataTypeMap, engine, tableName);

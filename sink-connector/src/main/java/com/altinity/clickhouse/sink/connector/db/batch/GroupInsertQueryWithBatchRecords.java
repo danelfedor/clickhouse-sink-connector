@@ -74,6 +74,8 @@ public class GroupInsertQueryWithBatchRecords {
                 if(record.getAfterModifiedFields() != null) {
                     result = updateQueryToRecordsMap(record, record.getAfterModifiedFields(), queryToRecordsMap, tableName, config, columnNameToDataTypeMap);
                 }
+                // 这里把update先改成delete, 因为这里被分成了两条会处理两次先当做delete处理before
+                record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.DELETE);
             } else {
                 log.error("************ RECORD DROPPED: INVALID CDC RECORD STATE *****************" + record.getSourceRecord());
             }
