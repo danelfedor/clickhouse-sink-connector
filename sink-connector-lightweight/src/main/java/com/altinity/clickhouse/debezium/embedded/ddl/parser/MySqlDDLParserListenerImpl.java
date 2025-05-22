@@ -105,33 +105,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     }
 
     @Override
-    public void enterCreateDatabase(MySqlParser.CreateDatabaseContext createDatabaseContext) {
-        for (ParseTree tree : createDatabaseContext.children) {
-            if (tree instanceof MySqlParser.UidContext) {
-
-                String databaseName = tree.getText();
-                if(!databaseName.isEmpty()) {
-
-                    String overrideDatabaseName = overrideDatabaseName(tree.getText());
-                    this.query.append(String.format(Constants.CREATE_DATABASE, overrideDatabaseName));
-                }
-            }
-        }
-    }
-
-    @Override
-    public void enterDropDatabase(MySqlParser.DropDatabaseContext dropDatabaseContext) {
-        for (ParseTree child : dropDatabaseContext.children) {
-            if (child instanceof MySqlParser.UidContext) {
-                String databaseName = child.getText();
-                String overrideDatabaseName = overrideDatabaseName(databaseName);
-
-                this.query.append(String.format(Constants.DROP_DATABASE, overrideDatabaseName));
-            }
-        }
-    }
-
-    @Override
     public void enterCopyCreateTable(MySqlParser.CopyCreateTableContext copyCreateTableContext) {
         ListIterator<ParseTree> it = copyCreateTableContext.children.listIterator();
 

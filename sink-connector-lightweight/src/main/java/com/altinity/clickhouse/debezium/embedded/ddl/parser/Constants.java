@@ -49,10 +49,6 @@ public class Constants {
     public static final String TRUNCATE_TABLE = "TRUNCATE TABLE %s";
     public static final String DROP_TABLE = "DROP TABLE";
 
-
-    public static final String CREATE_DATABASE = "CREATE DATABASE IF NOT EXISTS %s";
-    public static final String DROP_DATABASE = "DROP DATABASE IF EXISTS %s";
-
     public static final String DROP_COLUMN = "DROP COLUMN %s";
 
     public static final String DROP_CONSTRAINT = "DROP CONSTRAINT %s";
