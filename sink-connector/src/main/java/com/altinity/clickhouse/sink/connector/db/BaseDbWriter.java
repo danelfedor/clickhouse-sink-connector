@@ -58,41 +58,6 @@ public class BaseDbWriter {
         this.serverTimeZone = new DBMetadata().getServerTimeZone(this.conn);
     }
 
-    // Create offset/schema history storage database.
-    protected void createDestinationDatabase(String databaseName) {
-
-        DBMetadata metadata = new DBMetadata();
-        try {
-            if (false == metadata.checkIfDatabaseExists(this.conn, databaseName)) {
-                new ClickHouseCreateDatabase().createNewDatabase(this.conn, databaseName);
-            }
-        } catch(Exception e) {
-
-            int maxRetries = 0;
-            final int MAX_RETRIES = 5;
-            log.error("Error creating Database: " + databaseName);
-
-            // Keep retrying to createNewDatabase until Max number of retries is reached.
-            boolean createDatabaseFailed = false;
-            while(maxRetries++ > MAX_RETRIES) {
-                try {
-                    Thread.sleep(maxRetries * 5000);
-                    if (false == metadata.checkIfDatabaseExists(this.conn, databaseName)) {
-                        new ClickHouseCreateDatabase().createNewDatabase(this.conn, databaseName);
-                        createDatabaseFailed = true;
-                        break;
-                    }
-                } catch (Exception ex) {
-                    log.error("Retry Number: " + maxRetries + "of" + MAX_RETRIES + "  Error creating Database: " + databaseName);
-                }
-            }
-            // if maxRetries exceeded, throw runtime exception.
-            if(createDatabaseFailed == false) {
-                throw new RuntimeException("Error creating Database: " + databaseName, e);
-            }
-        }
-    }
-
     /**
      * Function to split JDBC properties string into Properties object.
      * @param jdbcProperties
