@@ -92,15 +92,6 @@ public class DbWriter extends BaseDbWriter {
             }
             DBMetadata metadata = new DBMetadata();
 
-            if(ConnectorType.getConnectorType(config, log) != ConnectorType.KAFKA) {
-                String offsetStorageDatabaseName = getOffsetStorageDatabaseName();
-                if (offsetStorageDatabaseName != null) {
-                    createDestinationDatabase(offsetStorageDatabaseName);
-                }
-            }
-            // ToDO: create destination database if not exists
-            createDestinationDatabase(database);
-
             MutablePair<DBMetadata.TABLE_ENGINE, String> response = metadata.getTableEngine(this.conn, database, tableName);
             this.engine = response.getLeft();
 
