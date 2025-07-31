@@ -147,7 +147,7 @@ def convert_to_clickhouse_table_regexp(user_name, table_name, source, rmt_delete
     partitioning_options = find_partitioning_options(source)
     src = source
     # create table if not exists
-    src = re.sub(r'CREATE TABLE', 'CREATE TABLE IF NOT EXISTS ', src)
+    src = re.sub(r'CREATE TABLE', 'CREATE TABLE', src)
     # get rid of SQL comments
     src = re.sub(r'\/\*(.*?)\*\/;', '', src)
     src = re.sub(r'\/\*(.*?)\*\/', '', src)
@@ -309,6 +309,8 @@ def load_schema(args, clickhouse_user=None, clickhouse_password=None,  dry_run=F
 
         for file in glob.glob(schema_file):
             (db, table) = parse_schema_path(file)
+            if table.startswith('windhash_') or table.startswith('log_'):
+                continue
             logging.info(f"{file} {db}.{table}")
             with gzip.open(file, "r") as schema_file:
                 source = schema_file.read().decode('UTF-8')
@@ -357,6 +359,8 @@ def load_schema_mysqlshell(args, clickhouse_user, clickhouse_password, dry_run=F
                 continue
 
             (db, table) = parse_schema_path_mysqlshell(file)
+            if table.startswith("windhash_"):
+                continue
             logging.info(f"{file} {db}.{table}")
             with open(file, "r") as schema_file:
                 source = schema_file.read()
@@ -467,6 +471,9 @@ def load_data_mysqlshell(args, timezone, schema_map, clickhouse_user=None, click
                 continue
 
             (schema, table_name) = parse_schema_path_mysqlshell(file)
+            print(table_name)
+            if table_name.startswith('windhash_'):
+                continue
             dfile = args.dump_dir + '/'
             # sakila@store@@0.tsv.zst
             data_files = glob.glob(
@@ -572,7 +579,7 @@ def main():
     parser.add_argument('--rmt_delete_support', help='Use RMT deletes', dest='rmt_delete_support',
                         action='store_true', default=False)
     parser.add_argument('--clickhouse_datetime_timezone',
-                        help='Timezone for CH date times', required=False, default=None)
+                        help='Timezone for CH date times', required=False, default=False)
     global args
     args = parser.parse_args()
     schema = not args.data_only

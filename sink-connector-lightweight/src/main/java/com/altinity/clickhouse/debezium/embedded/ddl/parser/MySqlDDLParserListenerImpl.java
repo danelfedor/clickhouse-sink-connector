@@ -192,7 +192,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         List<ParseTree> pt = ctx.children;
         Set<String> columnNames = new HashSet<>();
 
-        this.query.append(Constants.CREATE_TABLE).append(" ");
+        this.query.append(Constants.CREATE_FTABLE).append(" ");
         for (ParseTree tree : pt) {
 
             if (tree instanceof TableNameContext) {
