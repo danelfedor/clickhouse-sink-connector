@@ -351,6 +351,13 @@
       <version>1.19.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-storage-jdbc</artifactId>
+      <version>${version.debezium}</version>
+      <scope>system</scope>
+      <systemPath>${pom.basedir}/jar/debezium-storage-jdbc-3.0.0.Final.jar</systemPath>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>
