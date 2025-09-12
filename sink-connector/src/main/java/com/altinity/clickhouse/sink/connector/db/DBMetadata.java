@@ -487,7 +487,7 @@ public class DBMetadata {
         while (retryCount < MAX_RETRIES) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.setQueryTimeout(30);
-                stmt.executeUpdate(sql);
+                stmt.execute(sql);
             } catch(SQLException sqle) {
                 log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
                 try {
