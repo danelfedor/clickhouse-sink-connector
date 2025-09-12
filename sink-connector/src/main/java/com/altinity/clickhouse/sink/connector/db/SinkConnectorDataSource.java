@@ -18,11 +18,8 @@ public class SinkConnectorDataSource extends ClickHouseDataSource {
     }
 
     @Override
-    public ClickHouseConnection getConnection() throws SQLException {
+    public Connection  getConnection() throws SQLException {
         //System.out.println("Using custom HTTP client for ClickHouse!");
         return super.getConnection();
     }
-
-
-
 }

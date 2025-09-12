@@ -51,6 +51,7 @@ public class QueryFormatter {
 
         StringBuilder colNamesDelimited = new StringBuilder();
         StringBuilder colNamesToDataTypes = new StringBuilder();
+        StringBuilder placeholders = new StringBuilder();
 
         if(fields == null) {
             log.error("getInsertQueryUsingInputFunction, fields empty");
@@ -107,9 +108,16 @@ public class QueryFormatter {
         if(colNamesToDataTypesIndex != -1)
             colNamesToDataTypes.deleteCharAt(colNamesToDataTypesIndex);
 
-        String tableWithBackTicks = new StringBuffer().append("`").append(tableName).append(("`")).toString();
+        int columnCount = colNameToIndexMap.size();
+        for (int i = 0; i < columnCount; i++) {
+            placeholders.append("?");
+            if (i < columnCount - 1) {
+                placeholders.append(",");
+            }
+        }
 
-        String insertQuery = String.format("insert into %s(%s) select %s from input('%s')", tableWithBackTicks, colNamesDelimited, colNamesDelimited, colNamesToDataTypes);
+        String tableWithBackTicks = new StringBuffer().append("`").append(tableName).append(("`")).toString();
+        String insertQuery = String.format("insert into %s(%s) values(%s) ", tableWithBackTicks, colNamesDelimited, placeholders);
         MutablePair<String, Map<String, Integer>> response = new MutablePair<String, Map<String, Integer>>();
 
         response.left = insertQuery;

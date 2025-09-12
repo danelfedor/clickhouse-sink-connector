@@ -747,7 +747,11 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     public void enterTruncateTable(MySqlParser.TruncateTableContext truncateTableContext) {
         for (ParseTree child : truncateTableContext.children) {
             if (child instanceof MySqlParser.TableNameContext) {
-                this.query.append(String.format(Constants.TRUNCATE_TABLE, databaseName + "." + child.getText().toLowerCase()));
+                String tableName = child.getText().toLowerCase();
+                if (tableName.contains(".")) {
+                    tableName = tableName.split("\\.")[1];
+                }
+                this.query.append(String.format(Constants.TRUNCATE_TABLE, databaseName + "." + tableName));
             }
         }
     }

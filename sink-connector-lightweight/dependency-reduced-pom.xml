@@ -201,10 +201,6 @@
           <groupId>org.slf4j</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>commons-compress</artifactId>
-          <groupId>org.apache.commons</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>duct-tape</artifactId>
           <groupId>org.rnorth.duct-tape</groupId>
         </exclusion>
