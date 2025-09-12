@@ -35,7 +35,7 @@ public class ClickHouseAutoCreateTable extends ClickHouseTableOperationsBase{
         log.info(String.format("**** AUTO CREATE TABLE for database(%s), Query :%s)", databaseName, createTableQuery));
         // ToDO: need to run it before a session is created.
         DBMetadata metadata = new DBMetadata();
-        metadata.executeSystemQuery(connection, createTableQuery);
+        metadata.executeDDLQuery(connection, createTableQuery);
     }
 
     /**

@@ -79,7 +79,7 @@ public class ClickHouseAlterTable extends ClickHouseTableOperationsBase{
 
                 try {
                     DBMetadata metadata = new DBMetadata();
-                    metadata.executeSystemQuery(connection, alterTableQuery);
+                    metadata.executeDDLQuery(connection, alterTableQuery);
                 } catch(Exception e) {
                     log.error(" **** ALTER TABLE EXCEPTION ", e);
                 }

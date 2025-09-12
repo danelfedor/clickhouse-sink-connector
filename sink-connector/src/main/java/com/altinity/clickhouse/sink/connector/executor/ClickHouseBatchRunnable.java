@@ -114,7 +114,7 @@ public class ClickHouseBatchRunnable implements Runnable {
 
 
             DBMetadata metadata = new DBMetadata();
-            metadata.executeSystemQuery(systemConn, "CREATE DATABASE IF NOT EXISTS " + databaseName);
+            metadata.executeDDLQuery(systemConn, "CREATE DATABASE IF NOT EXISTS " + databaseName);
         } catch(Exception e) {
             log.error("Error creating database " + e);
         }

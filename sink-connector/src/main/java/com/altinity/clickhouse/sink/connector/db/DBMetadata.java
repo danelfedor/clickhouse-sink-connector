@@ -465,7 +465,45 @@ public class DBMetadata {
         return rs;
     }
 
-        /**
+    /**
+     * Function to execute DDL query
+     * @parm sql
+     * @return
+     * @throws SQLException
+     **/
+    public void executeDDLQuery(Connection conn, String sql) throws SQLException {
+        int retryCount = 0;
+        String trimmedSql = sql.trim().toLowerCase();
+        // 过滤非DDL语句
+        if (!(trimmedSql.startsWith("create") || trimmedSql.startsWith("alter") ||
+                trimmedSql.startsWith("drop") || trimmedSql.startsWith("truncate"))) {
+            log.warn("Code bug do not use execute DDL to execute common sql");
+            return;
+        }
+        if (conn == null || conn.isClosed()) {
+            log.warn("Connection is null or closed in executeSystemQuery");
+            conn = HikariDbSource.initiateNewConnectionIfClosed(SYSTEM_DB);
+        }
+        while (retryCount < MAX_RETRIES) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(30);
+                stmt.executeUpdate(sql);
+            } catch(SQLException sqle) {
+                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
+                try {
+                    Thread.sleep(1000 * (retryCount + 1));
+                    conn = HikariDbSource.initiateNewConnectionIfClosed(SYSTEM_DB);
+                } catch(Exception e) {
+                    log.error("Error initiating DB connection during retry #" + retryCount, e);
+                }
+                retryCount++;
+            } catch(Exception e) {
+                log.error("Unexpected error executing query: " + sql, e);
+                break;
+            }
+        }
+    }
+
 
     /**
      * Function to execute query.
@@ -474,35 +512,41 @@ public class DBMetadata {
      * @throws SQLException
      */
     public String executeSystemQuery(Connection conn, String sql) throws SQLException {
-        
-        // Add retry logic.
+        // 原有的查询逻辑
         int retryCount = 0;
         String result = null;
-        ResultSet rs = null;
+
         while(retryCount < MAX_RETRIES) {
             try {
-                rs = conn.prepareStatement(sql).executeQuery();
+                if (conn == null || conn.isClosed()) {
+                    log.warn("Connection is null or closed in executeSystemQuery");
+                    conn = HikariDbSource.initiateNewConnectionIfClosed(SYSTEM_DB);
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setQueryTimeout(30);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs != null && rs.next()) {
+                            result = rs.getString(1);
+                        }
+                    }
+                }
                 break;
             } catch(SQLException sqle) {
+                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
                 try {
-                    log.error("Error executing query: Retrying: #" + retryCount, sqle);
-                    Thread.sleep(1000 * retryCount);
-                    // get a new connection from pool.
+                    Thread.sleep(1000 * (retryCount + 1));
                     conn = HikariDbSource.initiateNewConnectionIfClosed(SYSTEM_DB);
                 } catch(Exception e) {
-                    log.error("Error initiating DB connection", e);
+                    log.error("Error initiating DB connection during retry #" + retryCount, e);
                 }
                 retryCount++;
+            } catch(Exception e) {
+                log.error("Unexpected error executing query: " + sql, e);
+                break;
             }
         }
-
-        if(rs != null) {
-            while(rs.next()) {
-                result = rs.getString(1);
-            }
-        }
-
-        //conn.close();
         return result;
     }
 

@@ -407,7 +407,7 @@ public class DebeziumChangeEventCapture {
         for (String query : queries) {
             if (!query.isEmpty()) {
                 log.info("ClickHouse DDL: " + query);
-                dbMetadata.executeSystemQuery(writer.getConnection(), query);
+                dbMetadata.executeDDLQuery(writer.getConnection(), query);
             }
         }
     }

@@ -55,7 +55,7 @@ public class DebeziumJdbcStorageOperations {
 
         String createDbQuery = String.format("create database if not exists %s", databaseName);
         log.info("CREATING DEBEZIUM STORAGE Database: " + createDbQuery);
-        new DBMetadata().executeSystemQuery(conn, createDbQuery);
+        new DBMetadata().executeDDLQuery(conn, createDbQuery);
     }
 
     void createSchemaHistoryTable(Connection conn, Properties props) {
@@ -67,7 +67,7 @@ public class DebeziumJdbcStorageOperations {
 
 
         try {
-            new DBMetadata().executeSystemQuery(conn, createSchemaHistoryTable);
+            new DBMetadata().executeDDLQuery(conn, createSchemaHistoryTable);
         } catch(Exception e) {
             log.error("Error creating schema history table", e);
         }
@@ -94,7 +94,7 @@ public class DebeziumJdbcStorageOperations {
         // Remove quotes.
         formattedView = formattedView.replace("\"", "");
         try {
-            new DBMetadata().executeSystemQuery(conn, formattedView);
+            new DBMetadata().executeDDLQuery(conn, formattedView);
         } catch(Exception e) {
             log.error("**** Error creating VIEW **** " + formattedView);
         }

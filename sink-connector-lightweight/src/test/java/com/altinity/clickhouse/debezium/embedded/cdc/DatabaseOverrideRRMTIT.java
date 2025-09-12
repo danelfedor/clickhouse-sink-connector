@@ -84,7 +84,7 @@ public class DatabaseOverrideRRMTIT {
         BaseDbWriter writer = ITCommon.getDBWriter(clickHouseContainer);
 
         DBMetadata dbMetadata = new DBMetadata();
-        dbMetadata.executeSystemQuery(writer.getConnection(), "CREATE DATABASE employees2");
+        dbMetadata.executeDDLQuery(writer.getConnection(), "CREATE DATABASE employees2");
         dbMetadata.executeSystemQuery(writer.getConnection(), "CREATE DATABASE productsnew");
 
         Thread.sleep(10000);
