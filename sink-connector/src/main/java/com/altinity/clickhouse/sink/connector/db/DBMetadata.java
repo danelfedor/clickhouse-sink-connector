@@ -488,6 +488,7 @@ public class DBMetadata {
             try (Statement stmt = conn.createStatement()) {
                 stmt.setQueryTimeout(30);
                 stmt.execute(sql);
+                break;
             } catch(SQLException sqle) {
                 log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
                 try {
@@ -501,6 +502,7 @@ public class DBMetadata {
                 log.error("Unexpected error executing query: " + sql, e);
                 break;
             }
+
         }
     }
 
