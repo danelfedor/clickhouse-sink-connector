@@ -48,8 +48,6 @@ public enum ClickHouseSinkConnectorConfigVariables {
     // for prometheus to scrape metrics.
     METRICS_ENDPOINT_PORT("metrics.port"),
 
-    REPLACING_MERGE_TREE_DELETE_COLUMN("replacingmergetree.delete.column"),
-
     //Config variable for auto creating tables if they dont exist.
     AUTO_CREATE_TABLES("auto.create.tables"),
 

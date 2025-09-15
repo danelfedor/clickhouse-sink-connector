@@ -552,8 +552,6 @@ public class DBMetadata {
         return result;
     }
 
-
-
     public Map<String, String> getColumnsDataTypesForTable(Connection conn, String tableName, String database ) {
 
         // Add retry logic. 

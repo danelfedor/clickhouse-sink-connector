@@ -266,17 +266,6 @@ public class ClickHouseSinkConnectorConfig extends AbstractConfig {
                         ConfigDef.Width.NONE,
                         ClickHouseSinkConnectorConfigVariables.STORE_RAW_DATA_COLUMN.toString())
                 .define(
-                    ClickHouseSinkConnectorConfigVariables.REPLACING_MERGE_TREE_DELETE_COLUMN.toString(),
-                    Type.STRING,
-                    "sign",
-                    Importance.LOW,
-                    "Column thats used to store the sign value when the engine is ReplacingMergeTree, when a " +
-                            "delete CDC record is received, this column is set to -1, 1 otherwise",
-                    CONFIG_GROUP_CONNECTOR_CONFIG,
-                    1,
-                    ConfigDef.Width.NONE,
-                    ClickHouseSinkConnectorConfigVariables.REPLACING_MERGE_TREE_DELETE_COLUMN.toString())
-                .define(
                         ClickHouseSinkConnectorConfigVariables.ENABLE_KAFKA_OFFSET.toString(),
                         Type.BOOLEAN,
                         false,

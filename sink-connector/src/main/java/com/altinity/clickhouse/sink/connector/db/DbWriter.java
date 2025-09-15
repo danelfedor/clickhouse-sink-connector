@@ -2,9 +2,8 @@ package com.altinity.clickhouse.sink.connector.db;
 
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfigVariables;
-import com.altinity.clickhouse.sink.connector.common.ConnectorType;
 import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseAutoCreateTable;
-import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseCreateDatabase;
+import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.*;
 import com.altinity.clickhouse.sink.connector.model.ClickHouseStruct;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import lombok.Getter;
@@ -120,9 +119,8 @@ public class DbWriter extends BaseDbWriter {
                         }
                         boolean useReplicatedReplacingMergeTree = this.config.getBoolean(
                                 ClickHouseSinkConnectorConfigVariables.AUTO_CREATE_TABLES_REPLICATED.toString());
-                        String rmtDeleteColumn = this.config.getString(ClickHouseSinkConnectorConfigVariables.REPLACING_MERGE_TREE_DELETE_COLUMN.toString());
                         act.createNewTable(record.getPrimaryKey(), tableName, database, fields, this.conn,
-                                isNewReplacingMergeTreeEngine, useReplicatedReplacingMergeTree, rmtDeleteColumn);
+                                isNewReplacingMergeTreeEngine, useReplicatedReplacingMergeTree, IS_DELETED_COLUMN);
                     } catch (Exception e) {
                         log.error(String.format("**** Error creating table(%s), database(%s) ***",tableName, database), e);
                     }
@@ -147,7 +145,7 @@ public class DbWriter extends BaseDbWriter {
                     replacingMergeTreeWithIsDeletedColumn = true;
                 } else {
                     this.versionColumn = response.getRight();
-                    this.replacingMergeTreeDeleteColumn = this.config.getString(ClickHouseSinkConnectorConfigVariables.REPLACING_MERGE_TREE_DELETE_COLUMN.toString());
+                    this.replacingMergeTreeDeleteColumn = IS_DELETED_COLUMN;
                 }
 
             } else if (this.engine != null && this.engine.getEngine().equalsIgnoreCase(com.altinity.clickhouse.sink.connector.db.DBMetadata.TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine())) {
