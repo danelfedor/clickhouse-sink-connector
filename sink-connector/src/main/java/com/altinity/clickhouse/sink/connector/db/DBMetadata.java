@@ -351,12 +351,14 @@ public class DBMetadata {
                     tableName, null);
                 while (columns.next()) {
                     String columnName = columns.getString("COLUMN_NAME");
+                    // should not have _sign column
+                    if (columnName.equals("_sign")) {
+                        continue;
+                    }
+                    log.debug("Skipping _sign column");
                     String typeName = columns.getString("TYPE_NAME");
 
                     String isGeneratedColumn = columns.getString("IS_GENERATEDCOLUMN");
-                    String columnDefinition = columns.getString("COLUMN_DEF");
-                    String sqlDataType = columns.getString("SQL_DATA_TYPE");
-                    String dataType = columns.getString("DATA_TYPE");
               
                     // Skip generated columns.
                     if(isGeneratedColumn != null && isGeneratedColumn.equalsIgnoreCase("YES")) {
