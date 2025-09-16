@@ -479,7 +479,7 @@ public class DBMetadata {
         // 过滤非DDL语句
         if (!(trimmedSql.startsWith("create") || trimmedSql.startsWith("alter") ||
                 trimmedSql.startsWith("drop") || trimmedSql.startsWith("truncate"))) {
-            log.warn("Code bug do not use execute DDL to execute common sql");
+            log.error("Not execute sql" + trimmedSql + "Do not use this func to execute");
             return;
         }
         if (conn == null || conn.isClosed()) {
@@ -492,7 +492,9 @@ public class DBMetadata {
                 stmt.execute(sql);
                 break;
             } catch(SQLException sqle) {
-                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
+                String errorMessage = sqle.getMessage().toLowerCase();
+                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, errorMessage);
+                log.error(errorMessage);
                 try {
                     Thread.sleep(1000 * (retryCount + 1));
                     conn = HikariDbSource.initiateNewConnectionIfClosed(SYSTEM_DB);
@@ -500,11 +502,10 @@ public class DBMetadata {
                     log.error("Error initiating DB connection during retry #" + retryCount, e);
                 }
                 retryCount++;
-            } catch(Exception e) {
+            } catch (Exception e) {
                 log.error("Unexpected error executing query: " + sql, e);
                 break;
             }
-
         }
     }
 

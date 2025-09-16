@@ -69,16 +69,15 @@ public class HikariDbSource {
 
         int maxPoolSize = config.getInt(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_MAX_SIZE.toString());
         long poolConnectionTimeout = config.getLong(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_TIMEOUT.toString());
-        int minIdle = config.getInt(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_MIN_IDLE.toString());
         long maxLifetime = config.getLong(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_MAX_LIFETIME.toString());
 
         HikariConfig poolConfig = new HikariConfig();
         poolConfig.setPoolName("clickhouse" + "-" + databaseName);
-        String jdbcUrl = String.format("jdbc:ch:{hostname}:{port}/%s?insert_quorum=auto&server_time_zone&http_connection_provider=HTTP_URL_CONNECTION&server_version=22.13.1.24495", databaseName);
+        // socket_timeout = 30000ms (30s)
+        // connect_timeout = 10000ms (10s)
+        String jdbcUrl = String.format("jdbc:ch:{hostname}:{port}/%s?insert_quorum=auto&server_time_zone&http_connection_provider=HTTP_URL_CONNECTION&socket_timeout=30000&connection_timeout=10000", databaseName);
         poolConfig.setJdbcUrl(jdbcUrl);
         poolConfig.setDriverClassName("com.clickhouse.jdbc.ClickHouseDriver"); // Ensure driver is set
-       // poolConfig.setUsername(dataSource.getConnection().getCurrentUser()); // Optional, if already in JDBC URL
-        // poolConfig.setPassword(dataSource.getConnection().()); // Optional, if already in JDBC URL
         poolConfig.setConnectionTimeout(poolConnectionTimeout);
         poolConfig.setMaximumPoolSize(maxPoolSize);
         //poolConfig.setMinimumIdle(minIdle);

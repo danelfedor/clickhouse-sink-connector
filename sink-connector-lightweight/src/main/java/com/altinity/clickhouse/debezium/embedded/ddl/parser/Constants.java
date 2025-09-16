@@ -43,16 +43,13 @@ public class Constants {
     public static final String NOT_NULL = "notnull";
     public static final String NULL = "NULL";
 
-    public static final String IF_EXISTS = "if exists ";
-    public static final String IF_NOT_EXISTS = "if not exists ";
     public static final String RENAME_TABLE = "RENAME TABLE";
     public static final String TRUNCATE_TABLE = "TRUNCATE TABLE %s";
-    public static final String DROP_TABLE = "DROP TABLE";
+    public static final String DROP_TABLE = "DROP TABLE IF EXISTS";
 
     public static final String DROP_COLUMN = "DROP COLUMN %s";
 
     public static final String DROP_CONSTRAINT = "DROP CONSTRAINT %s";
-    public static final String NEW_REPLACING_MERGE_TREE_VERSION = "23.2";
 
 
     // There are certain Data types where Nullable is not supported.

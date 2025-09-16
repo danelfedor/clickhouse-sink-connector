@@ -17,7 +17,7 @@ public class ClickHouseDbConstants {
     public static final String SIGN_COLUMN = "_sign";
     public static final String SIGN_COLUMN_DATA_TYPE = "Int8";
 
-    public static final String CREATE_TABLE = "CREATE TABLE";
+    public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS";
 
     public static final String NULL = "NULL";
     public static final String NOT_NULL = "NOT NULL";

@@ -136,29 +136,13 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext columnCreateTableContext) {
         StringBuilder orderByColumns = new StringBuilder();
         StringBuilder partitionByColumn = new StringBuilder();
-        Set<String> columnNames = parseCreateTable(columnCreateTableContext, orderByColumns, partitionByColumn);
-        //this.query.append(" Engine=")
-        String isDeletedColumn = IS_DELETED_COLUMN;
-        // Iterate through columnNames and match isDeletedColumn with elements in columnNames.
-        // remove the backticks from elements in columnNames.
-        for(String columnName: columnNames) {
-            if(columnName.contains("`")) {
-               // replace backticks with empty string.
-                columnName = columnName.replace("`", "");
-            }
-            if(columnName.equalsIgnoreCase(isDeletedColumn)) {
-                isDeletedColumn = "__" + IS_DELETED_COLUMN;
-                break;
-            }
-        }
-
         // Check if the destination is ReplicatedReplacingMergeTree.
         boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
                 .AUTO_CREATE_TABLES_REPLICATED.toString());
 
         if(DebeziumChangeEventCapture.isNewReplacingMergeTreeEngine == true) {
             this.query.append("`").append(VERSION_COLUMN).append("` ").append(VERSION_COLUMN_DATA_TYPE).append(",");
-            this.query.append("`").append(isDeletedColumn).append("` ").append(IS_DELETED_COLUMN_DATA_TYPE);
+            this.query.append("`").append(IS_DELETED_COLUMN).append("` ").append(IS_DELETED_COLUMN_DATA_TYPE);
         } else {
             this.query.append("`").append(SIGN_COLUMN).append("` ").append(SIGN_COLUMN_DATA_TYPE).append(",");
             this.query.append("`").append(VERSION_COLUMN).append("` ").append(VERSION_COLUMN_DATA_TYPE);
@@ -167,9 +151,9 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         this.query.append(")");
         if(DebeziumChangeEventCapture.isNewReplacingMergeTreeEngine == true) {
             if(isReplicatedReplacingMergeTree == true) {
-                this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s, %s)", CLUSTER_STR, VERSION_COLUMN, isDeletedColumn));
+                this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s, %s)", CLUSTER_STR, VERSION_COLUMN, IS_DELETED_COLUMN));
             } else
-                this.query.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(",").append(isDeletedColumn).append(")");
+                this.query.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(",").append(IS_DELETED_COLUMN).append(")");
         } else {
             if (isReplicatedReplacingMergeTree == true) {
                 this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s)", CLUSTER_STR,  VERSION_COLUMN));
@@ -706,8 +690,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                         this.query.append(databaseName).append(".").append(tableName);
                     }
                 }
-            } else if(child instanceof MySqlParser.IfExistsContext) {
-                this.query.append(Constants.IF_EXISTS);
             }
         }
     }
