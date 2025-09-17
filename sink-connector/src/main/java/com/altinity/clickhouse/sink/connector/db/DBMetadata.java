@@ -410,7 +410,8 @@ public class DBMetadata {
                 break;
             } catch(SQLException sqle) {
                 String errorMessage = sqle.getMessage().toLowerCase();
-                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, errorMessage);
+                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
+                log.warn(errorMessage);
                 retryCount++;
             } catch (Exception e) {
                 log.error("Unexpected error executing query: " + sql, e);
