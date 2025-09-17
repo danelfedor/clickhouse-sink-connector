@@ -77,8 +77,6 @@ public class DBMetadata {
                 retryCount++;
             }
         }
-        
-
         return result;
     }
 
@@ -197,33 +195,6 @@ public class DBMetadata {
 
         return result;
     }
-
-
-    /**
-     * Function to check if Replacing mergetree is supported
-     * based on ClickHouse version.
-     * @return true, if RMT is supported, false otherwise
-     * @throws SQLException
-     */
-    public boolean checkIfNewReplacingMergeTree(String currentClickHouseVersion) throws SQLException {
-
-        boolean result = true;
-
-        DefaultArtifactVersion supportedVersion = new DefaultArtifactVersion(REPLACING_MERGE_TREE_VERSION_WITH_IS_DELETED);
-        DefaultArtifactVersion currentVersion = new DefaultArtifactVersion(currentClickHouseVersion);
-
-        if (currentVersion.compareTo(supportedVersion) < 0) {
-            result = false;
-        }
-
-        return result;
-    }
-
-    public String getClickHouseVersion(Connection connection) throws SQLException {
-        return this.executeSystemQuery(connection, "SELECT VERSION()");
-    }
-
-
 
     /**
      * Function to get the column name and isNullable as key/value pair.
@@ -387,6 +358,17 @@ public class DBMetadata {
         return rs;
     }
 
+    private boolean shouldIgnoreDDLError(String errorMessage) {
+        // column with this name already exists.
+        if (errorMessage.contains("cannot find column") ) {
+            return true;
+        }
+        // cannot find column `innerinsttype` to drop.
+        if (errorMessage.contains("Cannot add column") && errorMessage.contains("to drop")) {
+            return true;
+        }
+        return false;
+    }
     /**
      * Function to execute DDL query
      * @parm sql
@@ -410,8 +392,11 @@ public class DBMetadata {
                 break;
             } catch(SQLException sqle) {
                 String errorMessage = sqle.getMessage().toLowerCase();
+                if (shouldIgnoreDDLError(errorMessage)) {
+                    log.info("Ignoring DDL error: " + errorMessage);
+                    break;
+                }
                 log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
-                log.warn(errorMessage);
                 retryCount++;
             } catch (Exception e) {
                 log.error("Unexpected error executing query: " + sql, e);

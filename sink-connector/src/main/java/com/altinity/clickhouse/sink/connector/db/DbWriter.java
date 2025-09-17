@@ -93,14 +93,6 @@ public class DbWriter extends BaseDbWriter {
             this.engine = response.getLeft();
 
             long taskId = this.config.getLong(ClickHouseSinkConnectorConfigVariables.TASK_ID.toString());
-            boolean isNewReplacingMergeTreeEngine = false;
-            try {
-
-                String clickHouseVersion = metadata.getClickHouseVersion(this.conn);
-                isNewReplacingMergeTreeEngine = metadata.checkIfNewReplacingMergeTree(clickHouseVersion);
-            } catch (Exception e) {
-                log.error("Error retrieving ClickHouse version");
-            }
             //ToDO: Is this a reliable way of checking if the table exists already.
             if (this.engine == null) {
                 if (this.config.getBoolean(ClickHouseSinkConnectorConfigVariables.AUTO_CREATE_TABLES.toString())) {
@@ -117,7 +109,7 @@ public class DbWriter extends BaseDbWriter {
                         boolean useReplicatedReplacingMergeTree = this.config.getBoolean(
                                 ClickHouseSinkConnectorConfigVariables.AUTO_CREATE_TABLES_REPLICATED.toString());
                         act.createNewTable(record.getPrimaryKey(), tableName, database, fields, this.conn,
-                                isNewReplacingMergeTreeEngine, useReplicatedReplacingMergeTree, IS_DELETED_COLUMN);
+                                true, useReplicatedReplacingMergeTree, IS_DELETED_COLUMN);
                     } catch (Exception e) {
                         log.error(String.format("**** Error creating table(%s), database(%s) ***",tableName, database), e);
                     }

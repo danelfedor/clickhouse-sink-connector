@@ -29,7 +29,6 @@ public class MySqlDDLParserListenerImplTest {
     static public void init() {
         mySQLDDLParserService = new MySQLDDLParserService(new ClickHouseSinkConnectorConfig(new HashMap<>()),
                 "employees");
-        DebeziumChangeEventCapture.isNewReplacingMergeTreeEngine = true;
     }
     @Test
     public void testCreateTableWithEnum() {

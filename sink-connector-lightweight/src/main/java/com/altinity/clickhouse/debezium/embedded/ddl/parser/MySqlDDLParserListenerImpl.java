@@ -140,27 +140,14 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         // Check if the destination is ReplicatedReplacingMergeTree.
         boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
                 .AUTO_CREATE_TABLES_REPLICATED.toString());
-
-        if(DebeziumChangeEventCapture.isNewReplacingMergeTreeEngine == true) {
-            this.query.append("`").append(VERSION_COLUMN).append("` ").append(VERSION_COLUMN_DATA_TYPE).append(",");
-            this.query.append("`").append(IS_DELETED_COLUMN).append("` ").append(IS_DELETED_COLUMN_DATA_TYPE);
-        } else {
-            this.query.append("`").append(SIGN_COLUMN).append("` ").append(SIGN_COLUMN_DATA_TYPE).append(",");
-            this.query.append("`").append(VERSION_COLUMN).append("` ").append(VERSION_COLUMN_DATA_TYPE);
-        }
-
+        this.query.append("`").append(VERSION_COLUMN).append("` ").append(VERSION_COLUMN_DATA_TYPE).append(",");
+        this.query.append("`").append(IS_DELETED_COLUMN).append("` ").append(IS_DELETED_COLUMN_DATA_TYPE);
         this.query.append(")");
-        if(DebeziumChangeEventCapture.isNewReplacingMergeTreeEngine == true) {
-            if(isReplicatedReplacingMergeTree == true) {
-                this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s, %s)", CLUSTER_STR, VERSION_COLUMN, IS_DELETED_COLUMN));
-            } else
-                this.query.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(",").append(IS_DELETED_COLUMN).append(")");
-        } else {
-            if (isReplicatedReplacingMergeTree == true) {
-                this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s)", CLUSTER_STR,  VERSION_COLUMN));
-            } else
-                this.query.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(")");
-        }
+        if(isReplicatedReplacingMergeTree == true) {
+            this.query.append(String.format("Engine=ReplicatedReplacingMergeTree(%s, %s, %s)", CLUSTER_STR, VERSION_COLUMN, IS_DELETED_COLUMN));
+        } else
+            this.query.append(" Engine=ReplacingMergeTree(").append(VERSION_COLUMN).append(",").append(IS_DELETED_COLUMN).append(")");
+
         if(partitionByColumn.length() > 0) {
             this.query.append(Constants.PARTITION_BY).append(" ").append(partitionByColumn);
         }

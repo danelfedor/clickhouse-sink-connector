@@ -51,7 +51,6 @@ public class DebeziumChangeEventCapture {
 
     // Records grouped by Topic Name
     private LinkedBlockingQueue<List<ClickHouseStruct>> records;
-    static public boolean isNewReplacingMergeTreeEngine = true;
     final ExecutorService singleThreadDebeziumEventExecutor;
 
 
@@ -95,13 +94,6 @@ public class DebeziumChangeEventCapture {
             this.debeziumJdbcStorageOperations.createDatabaseForDebeziumStorage(systemDbConnection, props);
         } catch (SQLException e) {
             log.error("Error creating Debezium storage database", e);
-        }
-        try {
-            DBMetadata dbMetadata = new DBMetadata();
-            String clickHouseVersion = dbMetadata.getClickHouseVersion(systemDbConnection);
-            isNewReplacingMergeTreeEngine = new DBMetadata().checkIfNewReplacingMergeTree(clickHouseVersion);
-        } catch (Exception e) {
-            log.error("Error retrieving version", e);
         }
 
         // This is required for Debezium JDBC storage to identify the clickhouse driver.

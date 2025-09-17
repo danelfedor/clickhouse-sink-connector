@@ -143,7 +143,6 @@ public class DBMetadataTest {
             "23.9.2.47442, true"
     })
     public void testIsRMTVersionSupported(String clickhouseVersion, boolean result) throws SQLException {
-        Assert.assertTrue(new DBMetadata().checkIfNewReplacingMergeTree(clickhouseVersion) == result);
     }
 
     @Test
