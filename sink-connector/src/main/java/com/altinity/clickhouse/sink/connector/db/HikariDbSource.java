@@ -22,8 +22,6 @@ public class HikariDbSource {
     private static Map<String, Connection> connectionPool = new HashMap<>();
     //private static HikariDbSource instance;
 
-    private static boolean disabled = false;
-
     private static final Logger log = LogManager.getLogger(HikariDbSource.class);
     //private HikariDataSource dataSource;
     private String databaseName;
@@ -33,23 +31,34 @@ public class HikariDbSource {
         // this.createConnectionPool(dataSource, databaseName);
     }
 
-    public static Connection initiateNewConnectionIfClosed(String databaseName) throws SQLException {
-
-        if(disabled) {
-            return null;
+    public static Connection initiateNewConnectionIfClosed(Connection conn, String databaseName) throws SQLException {
+        if (conn != null && !conn.isClosed()) {
+            return conn;
         }
+        if (conn != null) {
+            conn.close();
+            conn = null;
+        }
+        log.warn("Connection is null or closed, reconnect");
         HikariDataSource dbSource = instance.get(databaseName);
-        if(dbSource == null) {
-
-        }
         HikariDbSource.printConnectionInfo();
-        return dbSource.getConnection();
+        conn = dbSource.getConnection();
+        int retry_count = 0;
+        while(conn == null || conn.isClosed()) {
+            try {
+                conn = dbSource.getConnection();
+                retry_count++;
+                long sleepTime = 1000L * retry_count;
+                Thread.sleep(sleepTime);
+            } catch(Exception e) {
+                log.error("Error connecting to ClickHouse " + e + " Retry Count: " + retry_count);
+            }
+        }
+        return conn;
     }
 
     public static HikariDataSource getInstance(SinkConnectorDataSource dataSource, String databaseName,
                                                ClickHouseSinkConnectorConfig config) {
-
-        disabled = config.getBoolean(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_DISABLE.toString());
         if(instance.containsKey(databaseName)) {
             return instance.get(databaseName);
         } else {
@@ -75,7 +84,7 @@ public class HikariDbSource {
         poolConfig.setPoolName("clickhouse" + "-" + databaseName);
         // socket_timeout = 30000ms (30s)
         // connect_timeout = 10000ms (10s)
-        String jdbcUrl = String.format("jdbc:ch:{hostname}:{port}/%s?insert_quorum=auto&server_time_zone&http_connection_provider=HTTP_URL_CONNECTION&socket_timeout=30000&connection_timeout=10000", databaseName);
+        String jdbcUrl = String.format("jdbc:ch:{hostname}:{port}/%s", databaseName);
         poolConfig.setJdbcUrl(jdbcUrl);
         poolConfig.setDriverClassName("com.clickhouse.jdbc.ClickHouseDriver"); // Ensure driver is set
         poolConfig.setConnectionTimeout(poolConnectionTimeout);

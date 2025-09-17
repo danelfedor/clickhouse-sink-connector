@@ -79,12 +79,10 @@ public class BaseDbWriter {
 
     public Connection getConnection() {
         HikariDbSource.printConnectionInfo();
-        if(this.conn == null) {
-            try {
-                this.conn = HikariDbSource.initiateNewConnectionIfClosed(this.database);
-            } catch (Exception e) {
-                log.error("Error retrieving new connection in getConnection");
-            }
+        try {
+            this.conn = HikariDbSource.initiateNewConnectionIfClosed(this.conn, this.database);
+        } catch (Exception e) {
+            log.error("Error retrieving new connection in getConnection");
         }
         return this.conn;
     }
@@ -113,11 +111,8 @@ public class BaseDbWriter {
             Properties properties = new Properties();
             properties.setProperty("client_name", clientName);
             properties.setProperty("custom_settings", "allow_experimental_object_type=1,insert_allow_materialized_columns=1");
-            boolean connectionPoolDisable = config.getBoolean(ClickHouseSinkConnectorConfigVariables.CONNECTION_POOL_DISABLE.toString());
             // Set the http connection provider to HTTP_URL_CONNECTION if connection pool is enabled.
-            if(!connectionPoolDisable) {
-                properties.setProperty("http_connection_provider", "HTTP_URL_CONNECTION");
-            }
+            properties.setProperty("http_connection_provider", "HTTP_URL_CONNECTION");
             if(!jdbcParams.isEmpty()) {
                 log.info("**** JDBC PARAMS from configuration:" + jdbcParams);
                 Properties userProps = splitJdbcProperties(jdbcParams);
@@ -128,15 +123,11 @@ public class BaseDbWriter {
 
             SinkConnectorDataSource dataSource = new SinkConnectorDataSource(url, properties, null);
             // Get connection from the pool.
-            if(connectionPoolDisable) {
-                log.info("Connection pool is disabled, creating a new connection");
-                conn = dataSource.getConnection();
-            } else {
-                HikariDataSource hikariDbSource = HikariDbSource.getInstance(dataSource, databaseName, config);
-                // Create a new ClickHouseConnection object with the connection from the pool.
-                // Convert Connection to ClickHouseConnection.
-                conn = hikariDbSource.getConnection();
-            }
+
+            HikariDataSource hikariDbSource = HikariDbSource.getInstance(dataSource, databaseName, config);
+            // Create a new ClickHouseConnection object with the connection from the pool.
+            // Convert Connection to ClickHouseConnection.
+            conn = hikariDbSource.getConnection();
         } catch (Exception e) {
             log.error("Error creating ClickHouse connection" + e);
         }

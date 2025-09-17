@@ -84,23 +84,20 @@ public class DbWriter extends BaseDbWriter {
         this.config = config;
 
         try {
-            if (this.conn != null) {
-                // Order of the column names and the data type has to match.
-                this.columnNameToDataTypeMap = new DBMetadata().getColumnsDataTypesForTable(tableName, this.conn,
-                        database, config);
-            }
             DBMetadata metadata = new DBMetadata();
+            this.conn = HikariDbSource.initiateNewConnectionIfClosed(this.conn, database);
+            // Order of the column names and the data type has to match.
+            this.columnNameToDataTypeMap = metadata.getColumnsDataTypesForTable(tableName, this.conn, database, config);
 
-            MutablePair<DBMetadata.TABLE_ENGINE, String> response = metadata.getTableEngine(this.conn, database, tableName);
+            MutablePair<DBMetadata.TABLE_ENGINE, String> response = metadata.getTableEngineUsingSystemTables(this.conn, database, tableName);
             this.engine = response.getLeft();
 
             long taskId = this.config.getLong(ClickHouseSinkConnectorConfigVariables.TASK_ID.toString());
             boolean isNewReplacingMergeTreeEngine = false;
             try {
-                DBMetadata dbMetadata = new DBMetadata();
-                String clickHouseVersion = dbMetadata.getClickHouseVersion(this.conn);
-                isNewReplacingMergeTreeEngine = dbMetadata
-                        .checkIfNewReplacingMergeTree(clickHouseVersion);
+
+                String clickHouseVersion = metadata.getClickHouseVersion(this.conn);
+                isNewReplacingMergeTreeEngine = metadata.checkIfNewReplacingMergeTree(clickHouseVersion);
             } catch (Exception e) {
                 log.error("Error retrieving ClickHouse version");
             }
@@ -129,7 +126,7 @@ public class DbWriter extends BaseDbWriter {
                 }
 
                 this.columnNameToDataTypeMap = new DBMetadata().getColumnsDataTypesForTable(tableName, this.conn, database, config);
-                response = metadata.getTableEngine(this.conn, database, tableName);
+                response = metadata.getTableEngineUsingSystemTables(this.conn, database, tableName);
                 this.engine = response.getLeft();
             }
 
@@ -182,7 +179,7 @@ public class DbWriter extends BaseDbWriter {
 
     public void updateColumnNameToDataTypeMap() throws SQLException {
         this.columnNameToDataTypeMap = new DBMetadata().getColumnsDataTypesForTable(tableName, this.conn, database, config);
-        MutablePair<DBMetadata.TABLE_ENGINE, String> response = new DBMetadata().getTableEngine(this.conn, database, tableName);
+        MutablePair<DBMetadata.TABLE_ENGINE, String> response = new DBMetadata().getTableEngineUsingSystemTables(this.conn, database, tableName);
         this.engine = response.getLeft();
     }
 

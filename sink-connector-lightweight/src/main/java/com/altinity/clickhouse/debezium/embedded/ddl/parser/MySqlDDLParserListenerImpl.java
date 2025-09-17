@@ -136,6 +136,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext columnCreateTableContext) {
         StringBuilder orderByColumns = new StringBuilder();
         StringBuilder partitionByColumn = new StringBuilder();
+        parseCreateTable(columnCreateTableContext, orderByColumns, partitionByColumn);
         // Check if the destination is ReplicatedReplacingMergeTree.
         boolean isReplicatedReplacingMergeTree = config.getBoolean(ClickHouseSinkConnectorConfigVariables
                 .AUTO_CREATE_TABLES_REPLICATED.toString());
@@ -171,14 +172,13 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         this.query.append(STORAGE_POLICY);
     }
 
-    private Set<String> parseCreateTable(MySqlParser.CreateTableContext ctx, StringBuilder orderByColumns,
+    private void parseCreateTable(MySqlParser.CreateTableContext ctx, StringBuilder orderByColumns,
                                   StringBuilder partitionByColumns) {
         List<ParseTree> pt = ctx.children;
         Set<String> columnNames = new HashSet<>();
 
         this.query.append(Constants.CREATE_TABLE).append(" ");
         for (ParseTree tree : pt) {
-
             if (tree instanceof TableNameContext) {
                 this.tableName = tree.getText().toLowerCase();
                 if (tableName.contains(".")) {
@@ -230,8 +230,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 }
             }
         }
-
-        return columnNames;
     }
 
     /**
