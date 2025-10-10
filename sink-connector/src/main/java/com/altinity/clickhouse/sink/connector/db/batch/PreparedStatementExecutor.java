@@ -40,7 +40,6 @@ public class PreparedStatementExecutor {
     private static final Logger log = LogManager.getLogger(PreparedStatementExecutor.class);
 
     private String replacingMergeTreeDeleteColumn;
-    private boolean replacingMergeTreeWithIsDeletedColumn;
 
     private String signColumn;
     private String versionColumn;
@@ -51,11 +50,9 @@ public class PreparedStatementExecutor {
     private String databaseName;
 
     public PreparedStatementExecutor(String replacingMergeTreeDeleteColumn,
-                                     boolean replacingMergeTreeWithIsDeletedColumn,
                                      String signColumn, String versionColumn,
                                      String databaseName, ZoneId serverTimeZone) {
         this.replacingMergeTreeDeleteColumn = replacingMergeTreeDeleteColumn;
-        this.replacingMergeTreeWithIsDeletedColumn = replacingMergeTreeWithIsDeletedColumn;
 
         this.signColumn = signColumn;
         this.versionColumn = versionColumn;
@@ -342,15 +339,9 @@ public class PreparedStatementExecutor {
                 if(columnNameToIndexMap.containsKey(replacingMergeTreeDeleteColumn) &&
                         config.getBoolean(ClickHouseSinkConnectorConfigVariables.IGNORE_DELETE.toString()) == false) {
                     if (record.getCdcOperation().getOperation().equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.DELETE.getOperation())) {
-                        if(replacingMergeTreeWithIsDeletedColumn)
-                            ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 1);
-                        else
-                            ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), -1);
+                        ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 1);
                     } else {
-                        if(replacingMergeTreeWithIsDeletedColumn)
-                            ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 0);
-                        else
-                            ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 1);
+                        ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 0);
                     }
                 }
             }

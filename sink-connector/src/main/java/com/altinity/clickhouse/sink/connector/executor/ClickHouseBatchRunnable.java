@@ -324,7 +324,7 @@ public class ClickHouseBatchRunnable implements Runnable {
         DbWriter writer = getDbWriterForTable(topicName, tableName, databaseName, firstRecord, databaseConn);
         PreparedStatementExecutor preparedStatementExecutor = new
                 PreparedStatementExecutor(writer.getReplacingMergeTreeDeleteColumn(),
-                writer.isReplacingMergeTreeWithIsDeletedColumn(), writer.getSignColumn(), writer.getVersionColumn(),
+                writer.getSignColumn(), writer.getVersionColumn(),
                 writer.getDatabaseName(), getServerTimeZone(this.config));
 
 

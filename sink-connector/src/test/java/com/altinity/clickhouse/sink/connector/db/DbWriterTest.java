@@ -294,8 +294,7 @@ public class DbWriterTest {
         Connection conn = DbWriter.createConnection(jdbcUrl, BaseDbWriter.DATABASE_CLIENT_NAME, userName, password,
                 BaseDbWriter.SYSTEM_DB, config);
         DbWriter dbWriter = new DbWriter(hostName, port, database, tableName, userName, password, config, null, conn);
-        PreparedStatementExecutor preparedStatementExecutor = new PreparedStatementExecutor(null,
-                false, null, null, database, ZoneId.of("UTC"));
+        PreparedStatementExecutor preparedStatementExecutor = new PreparedStatementExecutor(null, null, null, database, ZoneId.of("UTC"));
 
         ClickHouseDataType dt1 = preparedStatementExecutor.getClickHouseDataType("Min_Date", colNameToDataTypeMap);
         Assert.assertTrue(dt1 == ClickHouseDataType.Date);

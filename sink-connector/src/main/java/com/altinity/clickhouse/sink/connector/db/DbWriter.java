@@ -61,10 +61,6 @@ public class DbWriter extends BaseDbWriter {
      * the CREATE TABLE DEFINITION and ClickHouse
      * will delete the rows where the is_deleted column is set to 1.
      */
-    @Getter
-    @Setter
-    private boolean replacingMergeTreeWithIsDeletedColumn = false;
-
 
     public DbWriter(
             String hostName,
@@ -131,7 +127,6 @@ public class DbWriter extends BaseDbWriter {
                     String[] rmtColumnArray = rmtColumns.split(",");
                     this.versionColumn = rmtColumnArray[0].trim();
                     this.replacingMergeTreeDeleteColumn = rmtColumnArray[1].trim();
-                    replacingMergeTreeWithIsDeletedColumn = true;
                 } else {
                     this.versionColumn = response.getRight();
                     this.replacingMergeTreeDeleteColumn = IS_DELETED_COLUMN;
