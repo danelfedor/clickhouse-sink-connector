@@ -10,6 +10,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,10 +18,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -28,6 +26,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static com.altinity.clickhouse.sink.connector.db.BaseDbWriter.SYSTEM_DB;
 
 
 /**
@@ -46,7 +46,7 @@ public class DebeziumJdbcStorageOperations {
     }
     /**
      * Function to create database for Debezium storage.
-     * @param config
+     * @param props
      */
     void createDatabaseForDebeziumStorage(Connection conn, Properties props) throws SQLException {
 
@@ -143,8 +143,9 @@ public class DebeziumJdbcStorageOperations {
         //DBCredentials dbCredentials = parseDBConfiguration(config);
         String debeziumStorageStatusQuery = String.format("select * from %s limit 1", databaseName + "." + tableName);
         DBMetadata metadata = new DBMetadata();
-        ResultSet resultSet = metadata.executeQueryWithResultSet(debeziumStorageStatusQuery, conn);
-
+        MutablePair<ResultSet, PreparedStatement> res = metadata.executeQueryWithResultSet(debeziumStorageStatusQuery, conn, SYSTEM_DB);
+        ResultSet resultSet = res.getLeft();
+        PreparedStatement stmt = res.getRight();
         if(resultSet != null) {
             ResultSetMetaData md = resultSet.getMetaData();
             int numCols = md.getColumnCount();
@@ -188,7 +189,8 @@ public class DebeziumJdbcStorageOperations {
                 });
                 result.add(row);
             }
-
+            resultSet.close();
+            stmt.close();
             response = result.toJSONString();
         }
         return response;

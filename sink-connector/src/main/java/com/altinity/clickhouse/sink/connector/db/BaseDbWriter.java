@@ -55,7 +55,7 @@ public class BaseDbWriter {
         this.config = config;
         this.conn = conn;
         //this.createConnection(connectionUrl, "Agent_1", userName, password);
-        this.serverTimeZone = new DBMetadata().getServerTimeZone(this.conn);
+        this.serverTimeZone = ZoneId.of("UTC");
     }
 
     /**

@@ -233,7 +233,7 @@ public class ClickHouseBatchWriter {
         if(userProvidedTimeZoneId != null) {
             return userProvidedTimeZoneId;
         }
-        return new DBMetadata().getServerTimeZone(this.systemConnection);
+        return ZoneId.of("UTC");
     }
     /**
      * Function to process records

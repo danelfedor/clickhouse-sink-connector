@@ -46,96 +46,11 @@ public class DBMetadata {
         }
     }
 
-    /**
-     * Function to check if database exists by querying the information schema tables.
-     * @param conn
-     * @param databaseName
-     * @return
-     */
-    public boolean checkIfDatabaseExists(Connection conn, String databaseName) throws SQLException {
-
-        int retryCount = 0;
-        boolean result = false;
-
-        while (!result && retryCount < MAX_RETRIES) {
-            try {
-                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, databaseName);
-                log.info("Retrying checkIfDatabaseExists, attempt {}", retryCount);
-                try (Statement retryStmt = conn.createStatement()) {
-                    String showSchemaQuery = String.format(CHECK_DB_EXISTS_SQL, databaseName);
-                    ResultSet retryRs = retryStmt.executeQuery(showSchemaQuery);
-                    if (retryRs != null && retryRs.next()) {
-                        String response = retryRs.getString(1);
-                        if (response.equalsIgnoreCase(databaseName)) {
-                            result = true;
-                        }
-                    }
-                    retryRs.close();
-                }
-            } catch (Exception retryException) {
-                log.error("Retry attempt {} failed" + retryCount, retryException);
-                retryCount++;
-            }
-        }
-        return result;
-    }
-
     public static final String COLLAPSING_MERGE_TREE_SIGN_PREFIX = "CollapsingMergeTree(";
     public static final String REPLACING_MERGE_TREE_VER_PREFIX = "ReplacingMergeTree(";
 
     public static final String REPLACING_MERGE_TREE_VERSION_WITH_IS_DELETED = "23.2";
     public static final String REPLICATED_REPLACING_MERGE_TREE_VER_PREFIX = "ReplicatedReplacingMergeTree(";
-    /**
-     * Function to extract the sign column for CollapsingMergeTree
-     * @param createDML
-     * @return Sign column
-     */
-    public String getSignColumnForCollapsingMergeTree(String createDML) {
-
-        String signColumn = "sign";
-
-        if(createDML.contains(TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine())) {
-            signColumn = StringUtils.substringBetween(createDML, COLLAPSING_MERGE_TREE_SIGN_PREFIX, ")");
-        } else {
-            log.error("Error: Trying to retrieve sign from table that is not CollapsingMergeTree");
-        }
-
-        return signColumn;
-    }
-
-    /**
-     * Function to extract the version column for ReplacingMergeTree
-     * @param createDML
-     * @return Sign column
-     */
-    public String getVersionColumnForReplacingMergeTree(String createDML) {
-
-        String versionColumn = "ver";
-
-        if(createDML.contains(TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.getEngine())) {
-            String parameters = StringUtils.substringBetween(createDML, REPLICATED_REPLACING_MERGE_TREE_VER_PREFIX, ")");
-            if(parameters != null) {
-                String[] parameterArray = parameters.split(",");
-                if(parameterArray != null && parameterArray.length == 3) {
-                    versionColumn = parameterArray[2].trim();
-                } else if(parameterArray != null && parameterArray.length == 4) {
-                    versionColumn = parameterArray[2].trim() + "," + parameterArray[3].trim();
-                }
-            }
-        }
-        else if(createDML.contains(TABLE_ENGINE.REPLACING_MERGE_TREE.getEngine())) {
-            if(createDML != null && createDML.indexOf("(") != -1 && createDML.indexOf(")") != -1) {
-                String subString = StringUtils.substringBetween(createDML, REPLACING_MERGE_TREE_VER_PREFIX, ")");
-                if(subString != null) {
-                    versionColumn = subString.trim();
-                }
-            }
-        } else {
-            log.error("Error: Trying to retrieve ver from table that is not ReplacingMergeTree");
-        }
-
-        return versionColumn;
-    }
     /**
      * Function to get table engine using system tables.
      * @param conn ClickHouse Connection
@@ -145,14 +60,9 @@ public class DBMetadata {
     public MutablePair<TABLE_ENGINE, String> getTableEngineUsingSystemTables(final Connection conn, final String database,
                                                         final String tableName) {
         MutablePair<TABLE_ENGINE, String> result = new MutablePair<>();
-
-
         try {
-            if (conn == null) {
-                log.error("Error with DB connection");
-                return result;
-            }
-            try(Statement stmt = conn.createStatement()) {
+            Connection conn_inner = HikariDbSource.initiateNewConnectionIfClosed(conn, database);
+            try(Statement stmt = conn_inner.createStatement()) {
                 String showSchemaQuery = String.format("select engine_full from system.tables where name='%s' and database='%s'",
                         tableName, database);
                 ResultSet rs = stmt.executeQuery(showSchemaQuery);
@@ -176,17 +86,13 @@ public class DBMetadata {
     public MutablePair<TABLE_ENGINE, String> getEngineFromResponse(String response) {
         MutablePair<TABLE_ENGINE, String> result = new MutablePair<>();
 
-        if(response.contains(TABLE_ENGINE.COLLAPSING_MERGE_TREE.engine)) {
-            result.left = TABLE_ENGINE.COLLAPSING_MERGE_TREE;
-            result.right = getSignColumnForCollapsingMergeTree(response);
-        }
-        else if(response.contains(TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.engine)) {
+        if(response.contains(TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.engine)) {
             result.left = TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE;
-            result.right = getVersionColumnForReplacingMergeTree(response);
+            result.right = "_version";
         }
         else if(response.contains(TABLE_ENGINE.REPLACING_MERGE_TREE.engine)) {
             result.left = TABLE_ENGINE.REPLACING_MERGE_TREE;
-            result.right = getVersionColumnForReplacingMergeTree(response);
+            result.right = "_version";
         } else if(response.contains(TABLE_ENGINE.MERGE_TREE.engine)) {
             result.left = TABLE_ENGINE.MERGE_TREE;
         }  else {
@@ -206,16 +112,20 @@ public class DBMetadata {
 
         // Execute the following query to get the column name and isNullable as key/value pair.
         String query = String.format("SELECT name AS column_name, type LIKE 'Nullable(%%' AS is_nullable FROM system.columns WHERE (table = '%s') AND (database = '%s')", tableName, database);
-
-        try (Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(query);
+        try{
+            MutablePair<ResultSet, PreparedStatement> result = executeQueryWithResultSet(query, conn, database);
+            ResultSet rs = result.getLeft();
+            PreparedStatement stmt = result.getRight();
             while (rs.next()) {
                 String columnName = rs.getString("column_name");
                 boolean isNullable = rs.getBoolean("is_nullable");
                 columnsIsNullable.put(columnName, isNullable);
             }
+            rs.close();
+            stmt.close();
+        } catch (Exception e) {
+            log.error("Error getting columns is nullable", e);
         }
-
         return columnsIsNullable;
     }
   
@@ -232,7 +142,6 @@ public class DBMetadata {
         int retryCount = 0;
         Set<String> aliasColumns = new HashSet<>();
             try {
-                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, database);
                 aliasColumns = getAliasAndMaterializedColumnsForTableAndDatabase(tableName, database, conn);
             } catch(Exception e) {
                 log.error("Error getting alias columns", e);
@@ -275,27 +184,6 @@ public class DBMetadata {
         }
         return result;
     }
-    /**
-     * Function to get the ClickHouse server timezone(Defaults to UTC)
-     */
-    public ZoneId getServerTimeZone(Connection conn)  {
-        ZoneId result = ZoneId.of("UTC");
-        if(conn != null) {
-            try {
-                // Perform a query to get the server timezone
-                ResultSet rs = conn.prepareStatement("SELECT timezone()").executeQuery();
-                if (rs.next()) {
-                    String serverTimeZone = rs.getString(1);
-                    result = ZoneId.of(serverTimeZone);
-                }
-                rs.close();
-            } catch (Exception e) {
-                log.error("Error retrieving server timezone", e);
-        }
-
-        }
-        return result;
-    }
 
     /**
      * Function to get the column names which are
@@ -307,29 +195,25 @@ public class DBMetadata {
         // Add retry logic.
         int retryCount = 0;
         Set<String> aliasColumns = new HashSet<>();
-        while (retryCount < MAX_RETRIES) {
-            try {
-                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, databaseName);
-                String query = "SELECT name FROM system.columns WHERE (table = '%s') AND (database = '%s') and " +
-                "(default_kind='ALIAS' or default_kind='MATERIALIZED')";
-                String formattedQuery = String.format(query, tableName, databaseName);
-
-                // Execute query
-                ResultSet rs = conn.createStatement().executeQuery(formattedQuery);
-
-                // Get the list of columns from rs.
-                if(rs != null) {
-                    while (rs.next()) {
-                        String response = rs.getString(1);
-                        aliasColumns.add(response);
-                    }
+        try {
+            String query = "SELECT name FROM system.columns WHERE (table = '%s') AND (database = '%s') and " +
+            "(default_kind='ALIAS' or default_kind='MATERIALIZED')";
+            String formattedQuery = String.format(query, tableName, databaseName);
+            // Execute query
+            MutablePair<ResultSet, PreparedStatement> result = executeQueryWithResultSet(query, conn, databaseName);
+            ResultSet rs = result.getLeft();
+            PreparedStatement stmt = result.getRight();
+            // Get the list of columns from rs.
+            if(rs != null) {
+                while (rs.next()) {
+                    String response = rs.getString(1);
+                    aliasColumns.add(response);
                 }
-                rs.close();
-                break;
-            } catch(Exception e) {
-                log.error("Error getting alias columns", e);
-                retryCount++;
             }
+            rs.close();
+            stmt.close();
+        } catch(Exception e) {
+            log.error("Error getting alias columns", e);
         }
         return aliasColumns;
     }
@@ -341,21 +225,36 @@ public class DBMetadata {
      * @return
      * @throws SQLException
      */
-    public ResultSet executeQueryWithResultSet(String sql, Connection conn) throws SQLException {
-        // Add retry logic.
+    public MutablePair<ResultSet, PreparedStatement> executeQueryWithResultSet(String sql, Connection conn, String database) throws Exception {
         int retryCount = 0;
         ResultSet rs = null;
+        PreparedStatement ps = null;
         while (retryCount < MAX_RETRIES) {
             try {
-                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, SYSTEM_DB);
-                rs = conn.prepareStatement(sql).executeQuery();
+                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, database);
+                ps = conn.prepareStatement(sql);
+                rs = ps.executeQuery();
                 break;
+            } catch(SQLException sqle) {
+                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
+                try {
+                    Thread.sleep(1000 * (retryCount + 1));
+                } catch(Exception e) {
+                    log.error("Error initiating DB connection during retry #" + retryCount, e);
+                }
             } catch(Exception e) {
+                if (ps != null) {
+                    try {
+                        ps.close();
+                    } catch (SQLException se) {
+                        log.warn("Failed to close PreparedStatement", se);
+                    }
+                }
                 log.error("Error executing query", e);
                 retryCount++;
             }
         }
-        return rs;
+        return new MutablePair<>(rs, ps);
     }
 
     private boolean shouldIgnoreDDLError(String errorMessage) {
@@ -414,30 +313,18 @@ public class DBMetadata {
      */
     public String executeSystemQuery(Connection conn, String sql) throws SQLException {
         // 原有的查询逻辑
-        int retryCount = 0;
         String result = null;
-
-        while(retryCount < MAX_RETRIES) {
-            try {
-                conn = HikariDbSource.initiateNewConnectionIfClosed(conn, SYSTEM_DB);
-                PreparedStatement ps = conn.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery();
-                if (rs != null && rs.next()) {
-                    result = rs.getString(1);
-                }
-                break;
-            } catch(SQLException sqle) {
-                log.error("Error executing query: Retrying: #" + retryCount + ", SQL: " + sql, sqle);
-                try {
-                    Thread.sleep(1000 * (retryCount + 1));
-                } catch(Exception e) {
-                    log.error("Error initiating DB connection during retry #" + retryCount, e);
-                }
-                retryCount++;
-            } catch(Exception e) {
-                log.error("Unexpected error executing query: " + sql, e);
-                break;
+        try {
+            MutablePair<ResultSet, PreparedStatement> res = executeQueryWithResultSet(sql, conn, SYSTEM_DB);
+            ResultSet rs = res.getLeft();
+            PreparedStatement stmt = res.getRight();
+            if (rs != null && rs.next()) {
+                result = rs.getString(1);
             }
+            rs.close();
+            stmt.close();
+        } catch(Exception e) {
+            log.error("Unexpected error executing System query: " + sql, e);
         }
         return result;
     }

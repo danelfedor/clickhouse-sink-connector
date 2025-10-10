@@ -387,9 +387,6 @@ public class PreparedStatementExecutor {
         return matchingField;
     }
 
-
-
-
     public ClickHouseDataType getClickHouseDataType(String columnName, Map<String, String> columnNameToDataTypeMap) {
 
         ClickHouseDataType chDataType = null;

@@ -296,7 +296,7 @@ public class ClickHouseBatchRunnable implements Runnable {
         if(userProvidedTimeZoneId != null) {
             return userProvidedTimeZoneId;
         }
-        return new DBMetadata().getServerTimeZone(this.systemConnection);
+        return ZoneId.of("UTC");
     }
     /**
      * Function to process records

@@ -91,7 +91,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         ZoneId userProvidedTimeZoneId = null;
         try {
             if(!userProvidedTimeZone.isEmpty()) {
-
                 userProvidedTimeZoneId = ZoneId.of(userProvidedTimeZone);
                 if(userProvidedTimeZoneId != null) {
                     //log.info("**** OVERRIDE TIMEZONE for DateTime:" + userProvidedTimeZone);
