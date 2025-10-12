@@ -7,7 +7,6 @@ import com.altinity.clickhouse.sink.connector.common.SnowFlakeId;
 import com.altinity.clickhouse.sink.connector.converters.ClickHouseConverter;
 import com.altinity.clickhouse.sink.connector.converters.ClickHouseDataTypeMapper;
 import com.altinity.clickhouse.sink.connector.db.DBMetadata;
-import com.altinity.clickhouse.sink.connector.db.HikariDbSource;
 import com.altinity.clickhouse.sink.connector.metadata.TableMetaDataWriter;
 import com.altinity.clickhouse.sink.connector.model.BlockMetaData;
 import com.altinity.clickhouse.sink.connector.model.CdcRecordState;
@@ -15,9 +14,7 @@ import com.altinity.clickhouse.sink.connector.model.ClickHouseStruct;
 import com.altinity.clickhouse.sink.connector.model.KafkaMetaData;
 import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.data.ClickHouseDataType;
-import com.clickhouse.jdbc.ClickHouseConnection;
 import com.google.common.collect.Lists;
-import org.apache.avro.JsonProperties;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -31,7 +28,10 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.altinity.clickhouse.sink.connector.db.batch.CdcOperation.getCdcSectionBasedOnOperation;
@@ -103,6 +103,64 @@ public class PreparedStatementExecutor {
         return result;
     }
 
+    private boolean handle_single_record_with_null_value(ClickHouseStruct record,
+                                                  List<ClickHouseStruct> truncatedRecords,
+                                                  BlockMetaData bmd,
+                                                  Map.Entry<MutablePair<String, Map<String, Integer>>, List<ClickHouseStruct>> entry,
+                                                  String tableName,
+                                                  Map<String, String> columnToDataTypeMap,
+                                                  ClickHouseSinkConnectorConfig config,
+                                                  PreparedStatement ps,
+                                                  DBMetadata.TABLE_ENGINE engine) throws Exception {
+
+        if(record.getDatabase() != null) {
+            databaseName = record.getDatabase();
+        }
+
+        try {
+            bmd.update(record);
+        } catch (Exception e) {
+            log.error("**** ERROR: updating Prometheus", e);
+        }
+
+        if (record.getCdcOperation().getOperation().equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.TRUNCATE.getOperation())) {
+            truncatedRecords.add(record);
+            return false;
+        }
+
+        CdcRecordState cdcState = getCdcSectionBasedOnOperation(record.getCdcOperation());
+
+        switch (cdcState) {
+            case CDC_RECORD_STATE_BEFORE:
+                insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
+                        true, config, columnToDataTypeMap, engine, tableName);
+                if (record.getAfterStruct() != null && record.getAfterModifiedFields() != null) {
+                    record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.UPDATE);
+                }
+                break;
+
+            case CDC_RECORD_STATE_AFTER:
+                insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
+                        false, config, columnToDataTypeMap, engine, tableName);
+                break;
+
+            case CDC_RECORD_STATE_BOTH:
+                if (engine != null && engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine())) {
+                    insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
+                            true, config, columnToDataTypeMap, engine, tableName);
+                }
+                insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
+                        false, config, columnToDataTypeMap, engine, tableName);
+                break;
+
+            default:
+                log.error("INVALID CDC RECORD STATE: {}", cdcState);
+                return false;
+        }
+
+        return true;
+    }
+
     private boolean executePreparedStatement(String insertQuery, String topicName,
                                           Map.Entry<MutablePair<String, Map<String, Integer>>, List<ClickHouseStruct>> entry,
                                           BlockMetaData bmd, ClickHouseSinkConnectorConfig config,
@@ -122,43 +180,10 @@ public class PreparedStatementExecutor {
             DBMetadata metadata = new DBMetadata();
             try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
 
-                //List<ClickHouseStruct> recordsList = entry.getValue();
                 for (ClickHouseStruct record : batch) {
-                    if(record.getDatabase() != null)
-                        databaseName = record.getDatabase();
-
-                    try {
-                        bmd.update(record);
-                    } catch (Exception e) {
-                        log.error("**** ERROR: updating Prometheus", e);
-                    }
-
-                    if (record.getCdcOperation().getOperation().equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.TRUNCATE.getOperation())) {
-                        truncatedRecords.add(record);
+                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName, columnToDataTypeMap,config,ps,engine)){
                         continue;
                     }
-
-                    if (CdcRecordState.CDC_RECORD_STATE_BEFORE == getCdcSectionBasedOnOperation(record.getCdcOperation())) {
-                        insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                                true, config, columnToDataTypeMap, engine, tableName);
-                        // 这里如果是update修改过来的delete 应该能获取到after信息，改回去update处理第二条
-                        if (record.getAfterStruct() != null && record.getAfterModifiedFields() != null) {
-                            record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.UPDATE);
-                        }
-                    } else if (CdcRecordState.CDC_RECORD_STATE_AFTER == getCdcSectionBasedOnOperation(record.getCdcOperation())) {
-                        insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                                false, config, columnToDataTypeMap, engine, tableName);
-                    } else if (CdcRecordState.CDC_RECORD_STATE_BOTH == getCdcSectionBasedOnOperation(record.getCdcOperation())) {
-                        if (engine != null && engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine())) {
-                            insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                                    true, config, columnToDataTypeMap, engine, tableName);
-                        }
-                        insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                                false, config, columnToDataTypeMap, engine, tableName);
-                    } else {
-                        log.error("INVALID CDC RECORD STATE");
-                    }
-
                     ps.addBatch();
                 }
 
@@ -179,7 +204,6 @@ public class PreparedStatementExecutor {
                 log.error(String.format("******* ERROR inserting Batch Database(%s), Table(%s) *****************",
                         databaseName, tableName), e);
                 failedRecords.addAll(batch);
-                throw new RuntimeException(e);
             }
             if (!truncatedRecords.isEmpty()) {
                 try {
@@ -189,7 +213,30 @@ public class PreparedStatementExecutor {
                 }
             }
         });
+        // Retry failed records
+        if (!failedRecords.isEmpty()) {
+            DBMetadata metadata = new DBMetadata();
+            try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
+                ArrayList<ClickHouseStruct> truncatedRecords = new ArrayList<>();
 
+                for (ClickHouseStruct record : failedRecords) {
+                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName,
+                            columnToDataTypeMap, config, ps, engine)) {
+                        continue;
+                    }
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+
+                if (!truncatedRecords.isEmpty()) {
+                    metadata.truncateTable(conn, databaseName, tableName);
+                }
+
+            } catch (Exception e) {
+                log.error("Failed to retry failed records for database: {}, table: {}", databaseName, tableName, e);
+                throw new RuntimeException(e);
+            }
+        }
         return result.get();
     }
 
