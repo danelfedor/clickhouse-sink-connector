@@ -198,9 +198,7 @@ public class PreparedStatementExecutor {
                         + databaseName + " Table: " + tableName);
                 result.set(true);
 
-
             } catch (Exception e) {
-                Metrics.updateErrorCounters(topicName, entry.getValue().size());
                 log.error(String.format("******* ERROR inserting Batch Database(%s), Table(%s) *****************",
                         databaseName, tableName), e);
                 failedRecords.addAll(batch);
@@ -233,9 +231,11 @@ public class PreparedStatementExecutor {
                 }
 
             } catch (Exception e) {
+                Metrics.updateErrorCounters(topicName, entry.getValue().size());
                 log.error("Failed to retry failed records for database: {}, table: {}", databaseName, tableName, e);
-                throw new RuntimeException(e);
+                result.set(false);
             }
+            log.info("*** retry failed record insert success***");
         }
         return result.get();
     }
