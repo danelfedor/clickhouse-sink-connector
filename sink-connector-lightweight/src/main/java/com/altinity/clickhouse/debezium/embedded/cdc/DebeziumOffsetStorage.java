@@ -1,7 +1,5 @@
 package com.altinity.clickhouse.debezium.embedded.cdc;
 
-import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
-
 import com.altinity.clickhouse.sink.connector.db.DBMetadata;
 import com.clickhouse.logging.Logger;
 import com.clickhouse.logging.LoggerFactory;

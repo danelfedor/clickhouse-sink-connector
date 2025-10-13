@@ -2,9 +2,9 @@ import time
 import unittest
 from datetime import date
 
-from tests.clickhouse_connection import ClickHouseConnection
-from tests.mysql_connection import MySqlConnection
 from fake_data import FakeData
+from tests.mysql_connection import MySqlConnection
+
 
 class MyTestCase(unittest.TestCase):
 

@@ -1,5 +1,12 @@
 from integration.helpers.common import change_sink_configuration
 from integration.helpers.create_config import include_all_databases_with_rrmt
+from integration.tests.steps.alter import (
+    add_column,
+    rename_column,
+    change_column,
+    modify_column,
+    drop_column,
+)
 from integration.tests.steps.clickhouse import (
     check_if_table_was_created,
     create_clickhouse_database,
@@ -8,13 +15,6 @@ from integration.tests.steps.clickhouse import (
 )
 from integration.tests.steps.mysql import *
 from integration.tests.steps.service_settings import *
-from integration.tests.steps.alter import (
-    add_column,
-    rename_column,
-    change_column,
-    modify_column,
-    drop_column,
-)
 
 
 def get_n_random_items(lst, n):

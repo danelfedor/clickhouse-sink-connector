@@ -1,12 +1,12 @@
-from integration.tests.steps.mysql import *
-from integration.tests.steps.datatypes import *
-from integration.tests.steps.service_settings import *
-import string
 import random
-from keyword import iskeyword
+import string
 from integration.requirements.requirements import (
     RQ_SRS_030_ClickHouse_MySQLToClickHouseReplication_TableNames_Valid,
 )
+from integration.tests.steps.datatypes import *
+from integration.tests.steps.mysql import *
+from integration.tests.steps.service_settings import *
+from keyword import iskeyword
 
 
 def generate_table_names(num_names, max_length=64):

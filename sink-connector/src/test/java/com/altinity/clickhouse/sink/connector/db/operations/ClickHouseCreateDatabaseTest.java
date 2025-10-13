@@ -3,28 +3,21 @@ package com.altinity.clickhouse.sink.connector.db.operations;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfigVariables;
 import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
-import com.altinity.clickhouse.sink.connector.db.HikariDbSource;
-import com.clickhouse.jdbc.ClickHouseConnection;
 import com.altinity.clickhouse.sink.connector.db.DbWriter;
-import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseCreateDatabase;
-
-import org.junit.After;
+import com.altinity.clickhouse.sink.connector.db.HikariDbSource;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.junit.jupiter.Container;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.clickhouse.ClickHouseContainer;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
-import java.util.ArrayList;
 import java.util.HashMap;
 
 @Testcontainers

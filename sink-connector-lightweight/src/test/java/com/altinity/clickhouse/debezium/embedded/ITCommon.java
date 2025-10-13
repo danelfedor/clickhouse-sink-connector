@@ -4,16 +4,16 @@ import com.altinity.clickhouse.debezium.embedded.common.PropertiesHelper;
 import com.altinity.clickhouse.debezium.embedded.config.ConfigLoader;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
-
 import org.testcontainers.clickhouse.ClickHouseContainer;
-import org.testcontainers.containers.*;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Properties;
 import java.util.HashMap;
+import java.util.Properties;
 public class ITCommon {
     static public Connection connectToMySQL(MySQLContainer mySqlContainer) {
         Connection conn = null;

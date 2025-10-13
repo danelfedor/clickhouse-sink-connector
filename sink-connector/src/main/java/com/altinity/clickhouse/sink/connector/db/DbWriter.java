@@ -3,7 +3,6 @@ package com.altinity.clickhouse.sink.connector.db;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfigVariables;
 import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseAutoCreateTable;
-import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.*;
 import com.altinity.clickhouse.sink.connector.model.ClickHouseStruct;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import lombok.Getter;
@@ -18,7 +17,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.debezium.storage.jdbc.JdbcCommonConfig.CONFIGURATION_FIELD_PREFIX_STRING;
+import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.IS_DELETED_COLUMN;
 import static io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX;
 
 /**

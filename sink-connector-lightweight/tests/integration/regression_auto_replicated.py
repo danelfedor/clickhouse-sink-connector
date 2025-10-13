@@ -3,12 +3,10 @@
 import os
 import sys
 import time
-
-from testflows.core import *
-
 from integration.tests.steps.sink_configurations import (
     config_with_replicated_table,
 )
+from testflows.core import *
 
 append_path(sys.path, "..")
 

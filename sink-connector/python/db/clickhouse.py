@@ -1,9 +1,9 @@
 import logging
-import warnings 
-from clickhouse_driver import connect
+import os
+import warnings
 import xml.etree.ElementTree as ET
 import yaml
-import os
+from clickhouse_driver import connect
 
 
 def clickhouse_connection(host, database='default', user='default',  password='', port=9000,

@@ -1,9 +1,9 @@
-import time
-import os
-
 import mysql.connector
-from mysql.connector import Error
+import os
+import time
 from faker import Faker
+from mysql.connector import Error
+
 Faker.seed(33422)
 
 fake = Faker()

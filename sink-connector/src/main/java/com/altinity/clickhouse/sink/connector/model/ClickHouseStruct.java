@@ -3,16 +3,19 @@ package com.altinity.clickhouse.sink.connector.model;
 import com.altinity.clickhouse.sink.connector.converters.ClickHouseConverter;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
-import org.apache.kafka.connect.source.SourceRecord;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 import static com.altinity.clickhouse.sink.connector.model.SinkRecordColumns.*;
 

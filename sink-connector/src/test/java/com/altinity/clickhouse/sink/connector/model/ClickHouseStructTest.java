@@ -1,7 +1,6 @@
 package com.altinity.clickhouse.sink.connector.model;
 
 import com.altinity.clickhouse.sink.connector.converters.ClickHouseConverter;
-import com.altinity.clickhouse.sink.connector.model.ClickHouseStruct;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;

@@ -1,7 +1,7 @@
 package com.altinity.clickhouse.debezium.embedded.ddl.parser;
+
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserListener;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;

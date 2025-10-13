@@ -1,19 +1,16 @@
+import inspect
 import os
+import re
+import tempfile
+import testflows.settings as settings
+import threading
 import time
 import uuid
-import inspect
-import tempfile
-import threading
-import re
-
-import testflows.settings as settings
-
+from integration.helpers.common import check_clickhouse_version, current_cpu
 from testflows.asserts import error
 from testflows.connect import Shell as ShellBase
 from testflows.core import *
 from testflows.uexpect import ExpectTimeoutError
-
-from integration.helpers.common import check_clickhouse_version, current_cpu
 
 MESSAGES_TO_RETRY = [
     "DB::Exception: ZooKeeper session has been expired",

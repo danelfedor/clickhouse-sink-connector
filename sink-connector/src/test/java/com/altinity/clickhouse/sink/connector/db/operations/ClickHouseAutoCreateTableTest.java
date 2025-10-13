@@ -5,18 +5,15 @@ import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
 import com.altinity.clickhouse.sink.connector.db.DbWriter;
 import com.altinity.clickhouse.sink.connector.db.HikariDbSource;
 import com.clickhouse.data.ClickHouseDataType;
-import com.clickhouse.jdbc.ClickHouseConnection;
 import io.debezium.data.Json;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.ClickHouseContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 

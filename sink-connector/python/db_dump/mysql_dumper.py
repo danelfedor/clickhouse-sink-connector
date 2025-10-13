@@ -7,17 +7,17 @@
 # -- Credits      : https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-dump-instance-schema.html
 # --                
 """
-import logging
 import argparse
-import traceback
-import sys
 import datetime
+import logging
 import os
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
 from db.mysql import *
 from subprocess import Popen, PIPE
-import subprocess
-import time
-import tempfile
 
 runTime = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
 

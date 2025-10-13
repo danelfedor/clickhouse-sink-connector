@@ -1,6 +1,5 @@
 package com.altinity.clickhouse.debezium.embedded;
 
-import static com.altinity.clickhouse.debezium.embedded.PostgresProperties.getDefaultProperties;
 import com.altinity.clickhouse.debezium.embedded.cdc.DebeziumChangeEventCapture;
 import com.altinity.clickhouse.debezium.embedded.parser.SourceRecordParserService;
 import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
@@ -22,6 +21,8 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static com.altinity.clickhouse.debezium.embedded.PostgresProperties.getDefaultProperties;
 
 public class ClickHouseDebeziumEmbeddedPostgresDecoderBufsDockerIT {
 

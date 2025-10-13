@@ -6,18 +6,18 @@
 # -- Credits      : https://www.sisense.com/blog/hashing-tables-to-ensure-consistency-in-postgres-redshift-and-mysql/               
 # --                
 """
-import logging
 import argparse
-import traceback
-import sys
-from sys import argv
-import datetime
-import warnings
-import re
-import os
-import hashlib
 import concurrent.futures
+import datetime
+import hashlib
+import logging
+import os
+import re
+import sys
+import traceback
+import warnings
 from db.clickhouse import *
+from sys import argv
 
 runTime = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
 

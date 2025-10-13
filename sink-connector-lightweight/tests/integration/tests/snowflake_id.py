@@ -1,8 +1,8 @@
-from integration.tests.steps.mysql import *
+import random
 from integration.tests.steps.clickhouse import *
 from integration.tests.steps.datatypes import *
+from integration.tests.steps.mysql import *
 from integration.tests.steps.service_settings import *
-import random
 
 
 @TestOutline

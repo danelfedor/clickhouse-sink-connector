@@ -1,7 +1,7 @@
 from integration.requirements.requirements import *
 from integration.tests.steps.configurations import *
-from integration.tests.steps.sql import *
 from integration.tests.steps.datatypes import *
+from integration.tests.steps.sql import *
 
 
 @TestOutline

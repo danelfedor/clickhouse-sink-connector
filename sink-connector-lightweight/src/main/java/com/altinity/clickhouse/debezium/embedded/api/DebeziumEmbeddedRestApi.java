@@ -22,7 +22,6 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
 import static com.altinity.clickhouse.debezium.embedded.cdc.DebeziumOffsetStorage.*;
-import static com.altinity.clickhouse.debezium.embedded.cdc.DebeziumOffsetStorage.LSN;
 import static com.altinity.clickhouse.sink.connector.db.BaseDbWriter.SYSTEM_DB;
 
 public class DebeziumEmbeddedRestApi {

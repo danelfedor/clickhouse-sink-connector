@@ -1,7 +1,6 @@
 import os
-
-from integration.helpers.create_config import *
 from integration.helpers.common import change_sink_configuration
+from integration.helpers.create_config import *
 
 default_config_path = os.path.join("env", "auto", "configs")
 

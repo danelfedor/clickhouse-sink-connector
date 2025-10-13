@@ -1,10 +1,6 @@
 package com.altinity.clickhouse.debezium.embedded.ddl.parser;
 
-import com.altinity.clickhouse.debezium.embedded.cdc.DebeziumChangeEventCapture;
 import com.altinity.clickhouse.debezium.embedded.parser.DataTypeConverter;
-import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.*;
-import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
-
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfigVariables;
 import com.altinity.clickhouse.sink.connector.common.Utils;
@@ -14,15 +10,18 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.AlterByAddColumnContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.TableNameContext;
 import io.debezium.relational.ddl.DataType;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNodeImpl;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.*;
+
+import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.*;
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
 
 
 /**

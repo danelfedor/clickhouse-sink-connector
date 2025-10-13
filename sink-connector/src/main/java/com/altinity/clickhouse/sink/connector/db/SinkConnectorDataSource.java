@@ -1,9 +1,8 @@
 package com.altinity.clickhouse.sink.connector.db;
 
 
-import com.clickhouse.jdbc.ClickHouseConnection;
 import com.clickhouse.jdbc.ClickHouseDataSource;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
 
 import java.sql.Connection;
 import java.sql.SQLException;

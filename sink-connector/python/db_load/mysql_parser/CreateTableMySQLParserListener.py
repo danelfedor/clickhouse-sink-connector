@@ -1,9 +1,9 @@
-from antlr4 import *
-from db_load.mysql_parser.MySqlParserListener import MySqlParserListener
-from db_load.mysql_parser.MySqlParser import MySqlParser
-from db.mysql import is_binary_datatype
-import re
 import logging
+import re
+from antlr4 import *
+from db.mysql import is_binary_datatype
+from db_load.mysql_parser.MySqlParser import MySqlParser
+from db_load.mysql_parser.MySqlParserListener import MySqlParserListener
 
 
 class CreateTableMySQLParserListener(MySqlParserListener):

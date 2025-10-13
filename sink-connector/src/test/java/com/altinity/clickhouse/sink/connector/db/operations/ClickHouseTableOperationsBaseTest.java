@@ -1,6 +1,5 @@
 package com.altinity.clickhouse.sink.connector.db.operations;
 
-import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseTableOperationsBase;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
 import org.apache.kafka.connect.data.Decimal;

@@ -1,6 +1,7 @@
 package com.altinity.clickhouse.sink.connector.db;
 
-import com.clickhouse.jdbc.ClickHouseConnection;
+import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
@@ -10,13 +11,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.testcontainers.containers.ClickHouseContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
-import org.apache.commons.lang3.tuple.MutablePair;
 import org.testcontainers.utility.MountableFile;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;

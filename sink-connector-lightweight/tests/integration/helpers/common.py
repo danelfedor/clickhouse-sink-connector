@@ -1,16 +1,14 @@
 import os
 import platform
+import testflows.settings as settings
 import time
 import uuid
 import xml.etree.ElementTree as xmltree
-
-import testflows.settings as settings
+from integration.helpers.create_config import update_sink_config, remove_configuration
 from testflows._core.testtype import TestSubType
 from testflows.asserts import error
 from testflows.core import *
 from testflows.core.name import basename, parentname
-
-from integration.helpers.create_config import update_sink_config, remove_configuration
 
 
 def current_cpu():

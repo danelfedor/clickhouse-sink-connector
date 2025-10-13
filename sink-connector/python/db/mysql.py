@@ -1,11 +1,11 @@
-from sqlalchemy import create_engine
-import logging
-import warnings
-import os
 import configparser
+import logging
+import os
+import pandas as pd
 import pymysql
 import pymysql as mysql
-import pandas as pd
+import warnings
+from sqlalchemy import create_engine
 
 binary_datatypes = ('blob', 'varbinary', 'point', 'geometry', 'bit', 'binary', 'linestring',
                     'geomcollection', 'multilinestring', 'multipolygon', 'multipoint', 'polygon')

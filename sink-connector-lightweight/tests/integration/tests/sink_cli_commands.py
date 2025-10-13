@@ -8,9 +8,9 @@ from integration.tests.steps.clickhouse import (
     check_if_table_was_created,
     validate_data_in_clickhouse_table,
 )
-from integration.tests.steps.service_settings import *
-from integration.tests.steps.mysql import *
 from integration.tests.steps.datatypes import all_mysql_datatypes_dict
+from integration.tests.steps.mysql import *
+from integration.tests.steps.service_settings import *
 
 
 @TestStep(Given)

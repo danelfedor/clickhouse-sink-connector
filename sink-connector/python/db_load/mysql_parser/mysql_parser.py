@@ -1,12 +1,13 @@
+import logging
 import sys
 from antlr4 import *
-from antlr4.tree.Trees import Trees 
+from antlr4.error.ErrorListener import ErrorListener
+from antlr4.tree.Trees import Trees
+from db_load.mysql_parser.CreateTableMySQLParserListener import CreateTableMySQLParserListener
 from db_load.mysql_parser.MySqlLexer import MySqlLexer
 from db_load.mysql_parser.MySqlParser import MySqlParser
-from db_load.mysql_parser.CreateTableMySQLParserListener import CreateTableMySQLParserListener
-from antlr4.error.ErrorListener import ErrorListener
-import logging
 from io import StringIO
+
 
 class MyErrorListener( ErrorListener ):
 

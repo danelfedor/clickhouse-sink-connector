@@ -7,16 +7,17 @@
 # -- Credits      : https://www.sisense.com/blog/hashing-tables-to-ensure-consistency-in-postgres-redshift-and-mysql/
 # --                
 """
-import logging
 import argparse
-import traceback
-import sys
-import datetime
-import re
-import os
-import hashlib
 import concurrent.futures
+import datetime
+import hashlib
+import logging
+import os
+import re
+import sys
+import traceback
 from db.mysql import *
+
 runTime = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
 
 

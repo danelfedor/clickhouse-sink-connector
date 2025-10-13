@@ -1,10 +1,9 @@
 import os
 import platform
+import testflows.settings as settings
 import time
 import uuid
 import xml.etree.ElementTree as xmltree
-
-import testflows.settings as settings
 from testflows._core.testtype import TestSubType
 from testflows.asserts import error
 from testflows.core import *

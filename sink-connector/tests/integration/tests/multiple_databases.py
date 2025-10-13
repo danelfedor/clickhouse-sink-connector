@@ -1,17 +1,16 @@
-from testflows.core import *
-
 from integration.helpers.common import getuid
 from integration.tests.replication import replication
+from integration.tests.steps.clickhouse import (
+    create_clickhouse_database,
+    check_if_table_was_created,
+)
 from integration.tests.steps.configurations import init_sink_connector_auto_created
 from integration.tests.steps.mysql.mysql import (
     create_mysql_database,
     generate_special_case_names,
     create_sample_table,
 )
-from integration.tests.steps.clickhouse import (
-    create_clickhouse_database,
-    check_if_table_was_created,
-)
+from testflows.core import *
 
 
 @TestStep(Given)

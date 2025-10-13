@@ -3,7 +3,6 @@ package com.altinity.clickhouse.debezium.embedded.ddl.parser;
 
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
 import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
-import com.altinity.clickhouse.sink.connector.db.DbWriter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.debezium.antlr.CaseChangingCharStream;

@@ -1,5 +1,3 @@
-from testflows.core import *
-
 from integration.helpers.common import getuid
 from integration.tests.steps.clickhouse import (
     check_if_table_was_created,
@@ -31,6 +29,7 @@ from integration.tests.steps.mysql.mysql import (
     generate_special_case_names,
 )
 from integration.tests.steps.mysql.updates import update
+from testflows.core import *
 
 
 @TestOutline

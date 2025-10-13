@@ -2,7 +2,6 @@ package com.altinity.clickhouse.sink.connector.db.operations;
 
 import com.altinity.clickhouse.sink.connector.converters.ClickHouseDataTypeMapper;
 import com.clickhouse.data.ClickHouseDataType;
-import com.clickhouse.jdbc.ClickHouseConnection;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
@@ -12,9 +11,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 

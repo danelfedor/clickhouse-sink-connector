@@ -1,7 +1,8 @@
 # Generated from MySqlLexer.g4 by ANTLR 4.11.1
+import sys
 from antlr4 import *
 from io import StringIO
-import sys
+
 if sys.version_info[1] > 5:
     from typing import TextIO
 else:

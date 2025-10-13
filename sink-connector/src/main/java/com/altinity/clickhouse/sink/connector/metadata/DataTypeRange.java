@@ -1,10 +1,11 @@
 package com.altinity.clickhouse.sink.connector.metadata;
 
 import com.clickhouse.data.format.BinaryStreamUtils;
-import static java.time.Instant.from;
-import static java.time.Instant.ofEpochMilli;
 
 import java.time.*;
+
+import static java.time.Instant.from;
+import static java.time.Instant.ofEpochMilli;
 
 public class DataTypeRange
 {

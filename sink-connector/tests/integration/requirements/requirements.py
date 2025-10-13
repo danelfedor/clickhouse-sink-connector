@@ -3,8 +3,8 @@
 # document by TestFlows v1.9.230125.1024636.
 # Do not edit by hand but re-generate instead
 # using 'tfs requirements generate' command.
-from testflows.core import Specification
 from testflows.core import Requirement
+from testflows.core import Specification
 
 Heading = Specification.Heading
 

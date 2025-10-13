@@ -7,15 +7,16 @@
 # -- Credits      : https://www.percona.com/blog/mysql-8-0-14-a-road-to-parallel-query-execution-is-wide-open/
 # --                
 """
-import logging
 import argparse
-import traceback
-import sys
-import datetime
-import re
-import os
 import concurrent.futures
+import datetime
+import logging
+import os
+import re
+import sys
+import traceback
 from db.mysql import *
+
 runTime = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
 
 

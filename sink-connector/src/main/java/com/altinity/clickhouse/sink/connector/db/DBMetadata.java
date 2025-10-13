@@ -1,18 +1,14 @@
 package com.altinity.clickhouse.sink.connector.db;
 
-import static com.altinity.clickhouse.sink.connector.db.BaseDbWriter.SYSTEM_DB;
-import static com.altinity.clickhouse.sink.connector.db.ClickHouseDbConstants.CHECK_DB_EXISTS_SQL;
-
 import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfig;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 import java.sql.*;
-import java.time.ZoneId;
 import java.util.*;
+
+import static com.altinity.clickhouse.sink.connector.db.BaseDbWriter.SYSTEM_DB;
 
 
 public class DBMetadata {
@@ -312,7 +308,6 @@ public class DBMetadata {
      * @throws SQLException
      */
     public String executeSystemQuery(Connection conn, String sql) throws SQLException {
-        // 原有的查询逻辑
         String result = null;
         try {
             MutablePair<ResultSet, PreparedStatement> res = executeQueryWithResultSet(sql, conn, SYSTEM_DB);

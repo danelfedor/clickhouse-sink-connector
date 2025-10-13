@@ -233,9 +233,10 @@ public class PreparedStatementExecutor {
             } catch (Exception e) {
                 Metrics.updateErrorCounters(topicName, entry.getValue().size());
                 log.error("Failed to retry failed records for database: {}, table: {}", databaseName, tableName, e);
-                result.set(false);
+                return result.get();
             }
-            log.info("*** retry failed record insert success***");
+            log.info("**** retry failed record insert success ****");
+            result.set(true);
         }
         return result.get();
     }

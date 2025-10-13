@@ -1,6 +1,5 @@
-from integration.requirements.requirements import *
-
 from integration.helpers.common import *
+from integration.requirements.requirements import *
 
 
 @TestStep(Given)
