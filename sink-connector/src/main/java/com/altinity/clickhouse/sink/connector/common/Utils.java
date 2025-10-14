@@ -156,7 +156,6 @@ public class Utils {
         if(splitName.length >= 3) {
             tableName = splitName[splitName.length - 1];
         }
-        tableName = tableName.toLowerCase();
         return tableName;
     }
     /**
