@@ -417,28 +417,36 @@ public class DebeziumChangeEventCapture {
         }
     }
 
+    private void removeEmpty_structs(List<ChangeEvent<SourceRecord, SourceRecord>> list_,List<ChangeEvent<SourceRecord, SourceRecord>> parsed_list) {
+        for(int i = 0; i < list_.size(); i++) {
+            ChangeEvent<SourceRecord, SourceRecord> event = list_.get(i);
+            SourceRecord sr = event.value();
+            Struct struct = (Struct) sr.value();
+            if (struct == null || struct.schema() == null || struct.schema().fields() == null) {
+                continue;
+            }
+            parsed_list.add(event);
+        }
+    }
     /**
      * Function to process every change event record
      * as received from Debezium
      *
-     * @param list List of ChangeEvent Record
+     * @param list_ List of ChangeEvent Record
      */
-    private void processChangeRecord(Properties props, List<ChangeEvent<SourceRecord, SourceRecord>> list,
+    private void processChangeRecord(Properties props, List<ChangeEvent<SourceRecord, SourceRecord>> list_,
                                           DebeziumRecordParserService debeziumRecordParserService,
                                           ClickHouseSinkConnectorConfig config,
                                           DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>>
                                                   recordCommitter) {
-        for(int i = 0; i < list.size(); i++) {
-            ChangeEvent<SourceRecord, SourceRecord> event = list.get(i);
-            boolean lastRecordInBatch = i == list.size() - 1;
+        List<ChangeEvent<SourceRecord, SourceRecord>> parsed_list = new ArrayList<>();
+        removeEmpty_structs(list_, parsed_list);
+        for(int i = 0; i < parsed_list.size(); i++) {
+            ChangeEvent<SourceRecord, SourceRecord> event = parsed_list.get(i);
+            boolean lastRecordInBatch = i == parsed_list.size() - 1;
             try {
                 SourceRecord sr = event.value();
                 Struct struct = (Struct) sr.value();
-
-                if (struct == null || struct.schema() == null || struct.schema().fields() == null) {
-                    log.debug("STRUCT EMPTY - not a valid CDC record + Record({})", event);
-                    continue;
-                }
 
                 List<Field> schemaFields = struct.schema().fields();
 
