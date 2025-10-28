@@ -9,6 +9,7 @@ import com.altinity.clickhouse.sink.connector.ClickHouseSinkConnectorConfigVaria
 import com.altinity.clickhouse.sink.connector.common.Metrics;
 import com.altinity.clickhouse.sink.connector.db.BaseDbWriter;
 import com.altinity.clickhouse.sink.connector.db.DBMetadata;
+import com.altinity.clickhouse.sink.connector.db.DbWriter;
 import com.altinity.clickhouse.sink.connector.db.operations.ClickHouseAlterTable;
 import com.altinity.clickhouse.sink.connector.executor.ClickHouseBatchExecutor;
 import com.altinity.clickhouse.sink.connector.executor.ClickHouseBatchRunnable;
@@ -55,8 +56,7 @@ public class DebeziumChangeEventCapture {
     // Records grouped by Topic Name
     private LinkedBlockingQueue<List<ClickHouseStruct>> records;
     final ExecutorService singleThreadDebeziumEventExecutor;
-
-
+    private  ConcurrentHashMap<String, DbWriter> topicToDbWriterMap;
     DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> engine;
     ClickHouseBatchWriter singleThreadedWriter;
 
@@ -72,6 +72,7 @@ public class DebeziumChangeEventCapture {
     public DebeziumChangeEventCapture() {
         singleThreadDebeziumEventExecutor = Executors.newFixedThreadPool(1);
         this.debeziumJdbcStorageOperations = new DebeziumJdbcStorageOperations();
+        topicToDbWriterMap = new ConcurrentHashMap<>();
     }
 
     public static int MAX_RETRIES = 25;
@@ -470,8 +471,9 @@ public class DebeziumChangeEventCapture {
                             log.debug("Wait Queue empty to execute ddl, sleep time {}", count);
                         }
                         performDDLOperation(ddl, props, sr, config, recordCommitter, event, lastRecordInBatch);
+                        String topicName = sr.topic();
+                        topicToDbWriterMap.remove(topicName);
                     }
-
                 } else {
                     ClickHouseStruct chStruct = debeziumRecordParserService.parse(event, recordCommitter, lastRecordInBatch);
                     try {
@@ -584,18 +586,17 @@ public class DebeziumChangeEventCapture {
 
         if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SINGLE_THREADED.toString())) {
             log.info("********* Running in Single Threaded mode *********");
-            singleThreadedWriter = new ClickHouseBatchWriter(config, new HashMap());
+            singleThreadedWriter = new ClickHouseBatchWriter(config, new HashMap(), topicToDbWriterMap);
         }
-
+        else {
             ThreadFactory namedThreadFactory =
                     new ThreadFactoryBuilder().setNameFormat("Sink Connector thread-pool-%d").build();
             this.executor = new ClickHouseBatchExecutor(config.getInt(ClickHouseSinkConnectorConfigVariables.THREAD_POOL_SIZE.toString()), namedThreadFactory);
             for (int i = 0; i < config.getInt(ClickHouseSinkConnectorConfigVariables.THREAD_POOL_SIZE.toString()); i++) {
-                this.executor.scheduleAtFixedRate(new ClickHouseBatchRunnable(this.records, config, new HashMap()), 0,
+                this.executor.scheduleAtFixedRate(new ClickHouseBatchRunnable(this.records, config, new HashMap(), topicToDbWriterMap), 0,
                         config.getLong(ClickHouseSinkConnectorConfigVariables.BUFFER_FLUSH_TIME.toString()), TimeUnit.MILLISECONDS);
             }
-
-        //this.executor.scheduleAtFixedRate(this.runnable, 0, config.getLong(ClickHouseSinkConnectorConfigVariables.BUFFER_FLUSH_TIME.toString()), TimeUnit.MILLISECONDS);
+        }
     }
 
     private void appendToRecords(List<ClickHouseStruct> convertedRecords, ClickHouseSinkConnectorConfig config) {
@@ -605,7 +606,6 @@ public class DebeziumChangeEventCapture {
             singleThreadedWriter.persistRecords(convertedRecords);
 
         } else {
-
             synchronized (this.records) {
                 this.records.add(convertedRecords);
             }

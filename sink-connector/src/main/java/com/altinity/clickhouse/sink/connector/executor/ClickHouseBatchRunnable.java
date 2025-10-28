@@ -66,7 +66,7 @@ public class ClickHouseBatchRunnable implements Runnable {
 
     public ClickHouseBatchRunnable(LinkedBlockingQueue<List<ClickHouseStruct>> records,
                                    ClickHouseSinkConnectorConfig config,
-                                   Map<String, String> topic2TableMap) {
+                                   Map<String, String> topic2TableMap, Map<String, DbWriter> topicToDbWriterMap) {
         this.records = records;
         this.config = config;
         if (topic2TableMap == null) {
@@ -75,9 +75,11 @@ public class ClickHouseBatchRunnable implements Runnable {
             this.topic2TableMap = topic2TableMap;
         }
 
-        //this.queryToRecordsMap = new HashMap<>();
-        this.topicToDbWriterMap = new HashMap<>();
-        //this.topicToRecordsMap = new HashMap<>();
+        if (topicToDbWriterMap == null) {
+            this.topicToDbWriterMap = new HashMap<>();
+        } else {
+            this.topicToDbWriterMap = topicToDbWriterMap;
+        }
 
         this.dbCredentials = parseDBConfiguration();
 
