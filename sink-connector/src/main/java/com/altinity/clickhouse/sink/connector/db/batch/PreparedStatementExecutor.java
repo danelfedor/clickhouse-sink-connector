@@ -376,7 +376,7 @@ public class PreparedStatementExecutor {
                             version_id_base = record.getSequenceNumber();
                         }
                         if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
-                            ps.setLong(columnNameToIndexMap.get(versionColumn), SnowFlakeId.generate(record.getTs_ms(), version_id_base, false));
+                            ps.setLong(columnNameToIndexMap.get(versionColumn), SnowFlakeId.generate(System.currentTimeMillis(), version_id_base, false));
                         } else {
                             ps.setLong(columnNameToIndexMap.get(versionColumn), version_id_base);
                         }
