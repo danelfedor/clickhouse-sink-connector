@@ -368,16 +368,17 @@ public class PreparedStatementExecutor {
                         engine.getEngine() == DBMetadata.TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.getEngine())
                 && versionColumn != null) {
             if (columnNameToDataTypeMap.containsKey(versionColumn)) {
-
                     if(columnNameToIndexMap.containsKey(versionColumn)) {
+                        long version_id_base;
                         if (record.getGtid() != -1) {
-                            if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
-                                ps.setLong(columnNameToIndexMap.get(versionColumn), SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false));
-                            } else {
-                                ps.setLong(columnNameToIndexMap.get(versionColumn), record.getGtid());
-                            }
+                            version_id_base = record.getGtid();
                         } else {
-                            ps.setLong(columnNameToIndexMap.get(versionColumn),  record.getSequenceNumber());
+                            version_id_base = record.getSequenceNumber();
+                        }
+                        if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
+                            ps.setLong(columnNameToIndexMap.get(versionColumn), SnowFlakeId.generate(record.getTs_ms(), version_id_base, false));
+                        } else {
+                            ps.setLong(columnNameToIndexMap.get(versionColumn), version_id_base);
                         }
                     }
 
