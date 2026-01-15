@@ -275,7 +275,8 @@ public class DBMetadata {
         String trimmedSql = sql.trim().toLowerCase();
         // 过滤非DDL语句
         if (!(trimmedSql.startsWith("create") || trimmedSql.startsWith("alter") ||
-                trimmedSql.startsWith("drop") || trimmedSql.startsWith("truncate"))) {
+                trimmedSql.startsWith("drop") || trimmedSql.startsWith("truncate") ||
+                trimmedSql.startsWith("rename"))) {
             log.error("Not execute sql" + trimmedSql + "Do not use this func to execute");
             return;
         }
