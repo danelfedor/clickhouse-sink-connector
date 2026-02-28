@@ -52,17 +52,18 @@ public class ClickHouseBatchWriter {
 
     public ClickHouseBatchWriter(
                                    ClickHouseSinkConnectorConfig config,
-                                   Map<String, String> topic2TableMap) {
+                                   Map<String, String> topic2TableMap, Map<String, DbWriter> topicToDbWriterMap) {
         this.config = config;
         if (topic2TableMap == null) {
             this.topic2TableMap = new HashMap();
         } else {
             this.topic2TableMap = topic2TableMap;
         }
-
-        //this.queryToRecordsMap = new HashMap<>();
-        this.topicToDbWriterMap = new HashMap<>();
-        //this.topicToRecordsMap = new HashMap<>();
+        if (topicToDbWriterMap == null) {
+            this.topicToDbWriterMap = new HashMap<>();
+        } else {
+            this.topicToDbWriterMap = topicToDbWriterMap;
+        }
 
         this.dbCredentials = parseDBConfiguration();
         this.systemConnection = createConnection(BaseDbWriter.SYSTEM_DB);
