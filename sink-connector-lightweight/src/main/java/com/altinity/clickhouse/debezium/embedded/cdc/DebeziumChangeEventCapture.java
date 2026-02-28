@@ -494,6 +494,7 @@ public class DebeziumChangeEventCapture {
                 appendToRecords(config);
             }
         }
+        appendToRecords(config);
     }
 
     @VisibleForTesting
@@ -503,12 +504,9 @@ public class DebeziumChangeEventCapture {
 
     private boolean isSnapshotDDL(SourceRecord sr) {
         boolean snapshotDDL = false;
-
         if(sr.sourceOffset() != null && sr.sourceOffset().containsKey("snapshot")) {
                 snapshotDDL = (Boolean) sr.sourceOffset().get("snapshot");
         }
-
-
         return snapshotDDL;
     }
     /***
@@ -564,9 +562,7 @@ public class DebeziumChangeEventCapture {
         } else {
             return false;
         }
-
     }
-
 
     /**
      * Function to setup separate processing thread/thread pool.
