@@ -421,8 +421,7 @@ public class DebeziumChangeEventCapture {
     }
 
     private void removeEmpty_structs(List<ChangeEvent<SourceRecord, SourceRecord>> list_,List<ChangeEvent<SourceRecord, SourceRecord>> parsed_list) {
-        for(int i = 0; i < list_.size(); i++) {
-            ChangeEvent<SourceRecord, SourceRecord> event = list_.get(i);
+        for (ChangeEvent<SourceRecord, SourceRecord> event : list_) {
             SourceRecord sr = event.value();
             Struct struct = (Struct) sr.value();
             if (struct == null || struct.schema() == null || struct.schema().fields() == null) {
