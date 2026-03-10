@@ -36,7 +36,7 @@ public class DataTypeConverter {
         return initializeDataTypeResolver().resolveDataType(columnDefChild);
     }
 
-    public static String convertToString(ClickHouseSinkConnectorConfig config, String columnName, int scale, int precision, MySqlParser.DataTypeContext columnDefChild, ZoneId userProvidedTimeZone) {
+    public static String convertToString(ClickHouseSinkConnectorConfig config, String columnName, int scale, int precision, MySqlParser.DataTypeContext columnDefChild) {
         new DefaultBeanRegistry();
 
         // Convert ClickHouseConnectorConfig to configuration.
@@ -73,13 +73,6 @@ public class DataTypeConverter {
         SchemaBuilder schemaBuilder = mysqlConverter.schemaBuilder(column);
 
         ClickHouseDataType chDataType = ClickHouseDataTypeMapper.getClickHouseDataType(schemaBuilder.schema().type(), schemaBuilder.schema().name());
-
-        // Separate handling for DateTime and DateTime64
-        if(userProvidedTimeZone != null && (chDataType == ClickHouseDataType.DateTime || chDataType == ClickHouseDataType.DateTime32)) {
-            return new StringBuffer().append(chDataType).append("(").append("'").append(userProvidedTimeZone).append("'").append(")").toString();
-        } else if (userProvidedTimeZone != null && chDataType == ClickHouseDataType.DateTime64) {
-            return new StringBuffer().append(chDataType).append("(").append(precision).append(",").append("'").append(userProvidedTimeZone).append("'").append(")").toString();
-        }
 
         if (precision > 0) {
             StringBuffer convertedStringBuf = new StringBuffer();

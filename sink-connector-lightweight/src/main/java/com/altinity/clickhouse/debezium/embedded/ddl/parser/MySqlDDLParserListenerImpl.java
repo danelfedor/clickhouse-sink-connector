@@ -32,7 +32,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
     StringBuffer query;
     String tableName;
     ClickHouseSinkConnectorConfig config;
-    ZoneId userProvidedTimeZone;
     Map<String, String> sourceToDestinationMap = new HashMap<>();
 
     String databaseName;
@@ -62,7 +61,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         this.config = config;
         this.dbMetadata = new DBMetadata();
         this.writer = writer;
-        this.userProvidedTimeZone = parseTimeZone();
     }
 
     /**
@@ -81,25 +79,6 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
             return sourceToDestinationMap.get(databaseName);
         }
         return databaseName;
-    }
-
-    public ZoneId parseTimeZone() {
-        String userProvidedTimeZone = config.getString(ClickHouseSinkConnectorConfigVariables
-                .CLICKHOUSE_DATETIME_TIMEZONE.toString());
-        // Validate if timezone string is valid.
-        ZoneId userProvidedTimeZoneId = null;
-        try {
-            if(!userProvidedTimeZone.isEmpty()) {
-                userProvidedTimeZoneId = ZoneId.of(userProvidedTimeZone);
-                if(userProvidedTimeZoneId != null) {
-                    //log.info("**** OVERRIDE TIMEZONE for DateTime:" + userProvidedTimeZone);
-                }
-            }
-        } catch (Exception e){
-            log.error("**** Error parsing user provided timezone:"+ userProvidedTimeZone + e.toString());
-        }
-
-        return userProvidedTimeZoneId;
     }
 
     @Override
@@ -325,7 +304,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         }
 
         chDataType = DataTypeConverter.convertToString(this.config, columnName,
-                scale, precision, dtc, this.userProvidedTimeZone);
+                scale, precision, dtc);
 
         return chDataType;
 
