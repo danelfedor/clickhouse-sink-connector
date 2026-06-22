@@ -52,3 +52,7 @@ tests/image/cache
 
 # Visual studio code
 .vscode/
+
+# Claude Code
+.claude/
+CLAUDE.md

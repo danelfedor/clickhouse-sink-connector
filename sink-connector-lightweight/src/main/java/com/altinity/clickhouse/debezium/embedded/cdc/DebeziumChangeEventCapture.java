@@ -347,8 +347,22 @@ public class DebeziumChangeEventCapture {
             }
         }
         updateMetrics(DDL);
-        String topicName = sr.topic();
-        topicToDbWriterMap.remove(topicName);
+
+        // DDL events have a server-level topic (e.g., "SERVER5432"),
+        // but data records are cached in topicToDbWriterMap with
+        // table-level topics (e.g., "SERVER5432.test.employees").
+        // Using sr.topic() directly would remove the wrong key.
+        // Construct the data-topic prefix and evict all cached
+        // DbWriters for tables in the affected database so they
+        // pick up the new schema on next access.
+        String dataTopicPrefix = sr.topic() + "." + databaseName + ".";
+        topicToDbWriterMap.keySet().removeIf(key -> {
+            boolean matched = key.startsWith(dataTopicPrefix);
+            if (matched) {
+                log.info("Evicting cached DbWriter for topic {}", key);
+            }
+            return matched;
+        });
     }
 
     private Connection setSystemDbConnection(DBCredentials dbCredentials, ClickHouseSinkConnectorConfig config) {
