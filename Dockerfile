@@ -1,4 +1,4 @@
-FROM openjdk:17-ea-slim
+FROM eclipse-temurin:17-jre-jammy
 COPY sink-connector-client/sink-connector-client /sink-connector-client
 COPY sink-connector-lightweight/target/clickhouse-debezium-embedded*.jar /app.jar
 ENV JAVA_OPTS="-Dlog4jDebug=true"
