@@ -111,7 +111,8 @@ public class PreparedStatementExecutor {
                                                   Map<String, String> columnToDataTypeMap,
                                                   ClickHouseSinkConnectorConfig config,
                                                   PreparedStatement ps,
-                                                  DBMetadata.TABLE_ENGINE engine) throws Exception {
+                                                  DBMetadata.TABLE_ENGINE engine,
+                                                  long batchSeq) throws Exception {
 
         if(record.getDatabase() != null) {
             databaseName = record.getDatabase();
@@ -145,12 +146,18 @@ public class PreparedStatementExecutor {
                 break;
 
             case CDC_RECORD_STATE_BOTH:
-                if (engine != null && engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine())) {
+                if (engine != null && (engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.COLLAPSING_MERGE_TREE.getEngine()) ||
+                        engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLACING_MERGE_TREE.getEngine()) ||
+                        engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.getEngine()))) {
                     insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
                             true, config, columnToDataTypeMap, engine, tableName);
+                    // 将BEFORE行加入batch, 与后续AFTER行构成两行:
+                    // Row N: 旧值+is_deleted=1 → Row N+1: 新值+is_deleted=0
+                    ps.addBatch();
                 }
                 insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
                         false, config, columnToDataTypeMap, engine, tableName);
+                // AFTER行的addBatch由调用方handle_single_record_with_null_value返回后执行
                 break;
 
             default:
@@ -370,15 +377,23 @@ public class PreparedStatementExecutor {
             if (columnNameToDataTypeMap.containsKey(versionColumn)) {
 
                     if(columnNameToIndexMap.containsKey(versionColumn)) {
+                        long versionValue;
                         if (record.getGtid() != -1) {
                             if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
-                                ps.setLong(columnNameToIndexMap.get(versionColumn), SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false));
+                                versionValue = SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false);
                             } else {
-                                ps.setLong(columnNameToIndexMap.get(versionColumn), record.getGtid());
+                                versionValue = record.getGtid();
                             }
                         } else {
-                            ps.setLong(columnNameToIndexMap.get(versionColumn),  record.getSequenceNumber());
+                            versionValue = record.getSequenceNumber();
                         }
+                        // BEFORE(beforeSection=true)是DELETE标记旧版本, AFTER是INSERT新版本.
+                        // AFTER版本号+1确保ReplacingMergeTree合并时AFTER(is_deleted=0)必定优先于BEFORE(is_deleted=1),
+                        // 不再依赖插入顺序保证正确性.
+                        if (!beforeSection) {
+                            versionValue += 1;
+                        }
+                        ps.setLong(columnNameToIndexMap.get(versionColumn), versionValue);
                     }
 
             }
@@ -386,7 +401,9 @@ public class PreparedStatementExecutor {
             if(this.replacingMergeTreeDeleteColumn != null && columnNameToDataTypeMap.containsKey(replacingMergeTreeDeleteColumn)) {
                 if(columnNameToIndexMap.containsKey(replacingMergeTreeDeleteColumn) &&
                         config.getBoolean(ClickHouseSinkConnectorConfigVariables.IGNORE_DELETE.toString()) == false) {
-                    if (record.getCdcOperation().getOperation().equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.DELETE.getOperation())) {
+                    // UPDATE的BEFORE部分(beforeSection=true)也应该标记is_deleted=1, 确保旧版本被删除
+                    if (record.getCdcOperation().getOperation().equalsIgnoreCase(ClickHouseConverter.CDC_OPERATION.DELETE.getOperation())
+                            || beforeSection == true) {
                         ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 1);
                     } else {
                         ps.setInt(columnNameToIndexMap.get(replacingMergeTreeDeleteColumn), 0);

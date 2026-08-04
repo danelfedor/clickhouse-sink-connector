@@ -67,14 +67,12 @@ public class GroupInsertQueryWithBatchRecords {
                 //columnNameToDataTypeMap = new DBMetadata().getColumnsDataTypesForTable(tableName, connection, databaseName, config );
                 result = updateQueryToRecordsMap(record, record.getAfterModifiedFields(), queryToRecordsMap, tableName, config, columnNameToDataTypeMap);
             } else if(CdcRecordState.CDC_RECORD_STATE_BOTH == getCdcSectionBasedOnOperation(record.getCdcOperation()))  {
-                if(record.getBeforeModifiedFields() != null) {
-                    result = updateQueryToRecordsMap(record, record.getBeforeModifiedFields(), queryToRecordsMap, tableName, config, columnNameToDataTypeMap);
-                }
+                // UPDATE处理: 保持单条记录, 在PreparedStatementExecutor中统一处理BEFORE+AFTER,
+                // 确保BEFORE(DELETE)和AFTER(INSERT)在同一批次中按正确顺序执行,
+                // 避免HashMap无序迭代导致DELETE在INSERT之后执行造成数据丢失
                 if(record.getAfterModifiedFields() != null) {
                     result = updateQueryToRecordsMap(record, record.getAfterModifiedFields(), queryToRecordsMap, tableName, config, columnNameToDataTypeMap);
                 }
-                // 这里把update先改成delete, 因为这里被分成了两条会处理两次先当做delete处理before
-                record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.DELETE);
             } else {
                 log.error("************ RECORD DROPPED: INVALID CDC RECORD STATE *****************" + record.getSourceRecord());
             }
