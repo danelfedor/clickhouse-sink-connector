@@ -111,8 +111,7 @@ public class PreparedStatementExecutor {
                                                   Map<String, String> columnToDataTypeMap,
                                                   ClickHouseSinkConnectorConfig config,
                                                   PreparedStatement ps,
-                                                  DBMetadata.TABLE_ENGINE engine,
-                                                  long batchSeq) throws Exception {
+                                                  DBMetadata.TABLE_ENGINE engine) throws Exception {
 
         if(record.getDatabase() != null) {
             databaseName = record.getDatabase();
@@ -380,18 +379,29 @@ public class PreparedStatementExecutor {
                         long versionValue;
                         if (record.getGtid() != -1) {
                             if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
+                                // SnowFlakeId: 63位已打包(GTID占低22位, timestamp占高41位).
+                                // 任何累加都会污染GTID位破坏跨事务顺序, 因此不做任何调整,
+                                // 依赖batch内BEFORE→AFTER→DELETE的固定插入顺序保证ReplacingMergeTree正确合并.
                                 versionValue = SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false);
                             } else {
-                                versionValue = record.getGtid();
+                                // GTID-based: 使用位拼接保证跨GTID严格有序.
+                                // 取binlog position作为事务内顺序标识(单调递增),
+                                // GTID左移21位(GTID间隔=2^21), 低21位放pos+after标记.
+                                long orderComponent = 0;
+                                if (record.getPos() > 0) {
+                                    orderComponent = record.getPos();
+                                } else if (record.getLsn() > 0) {
+                                    orderComponent = record.getLsn();
+                                }
+                                versionValue = (record.getGtid() << 21)
+                                        | ((orderComponent & 0xFFFFF) << 1)
+                                        | (beforeSection ? 0 : 1);
                             }
                         } else {
                             versionValue = record.getSequenceNumber();
-                        }
-                        // BEFORE(beforeSection=true)是DELETE标记旧版本, AFTER是INSERT新版本.
-                        // AFTER版本号+1确保ReplacingMergeTree合并时AFTER(is_deleted=0)必定优先于BEFORE(is_deleted=1),
-                        // 不再依赖插入顺序保证正确性.
-                        if (!beforeSection) {
-                            versionValue += 1;
+                            if (!beforeSection) {
+                                versionValue += 1;
+                            }
                         }
                         ps.setLong(columnNameToIndexMap.get(versionColumn), versionValue);
                     }
