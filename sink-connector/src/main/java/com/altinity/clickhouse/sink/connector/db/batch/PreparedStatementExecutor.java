@@ -111,7 +111,8 @@ public class PreparedStatementExecutor {
                                                   Map<String, String> columnToDataTypeMap,
                                                   ClickHouseSinkConnectorConfig config,
                                                   PreparedStatement ps,
-                                                  DBMetadata.TABLE_ENGINE engine) throws Exception {
+                                                  DBMetadata.TABLE_ENGINE engine,
+                                                  long batchSeq) throws Exception {
 
         if(record.getDatabase() != null) {
             databaseName = record.getDatabase();
@@ -133,7 +134,7 @@ public class PreparedStatementExecutor {
         switch (cdcState) {
             case CDC_RECORD_STATE_BEFORE:
                 insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                        true, config, columnToDataTypeMap, engine, tableName);
+                        true, config, columnToDataTypeMap, engine, tableName, batchSeq);
                 if (record.getAfterStruct() != null && record.getAfterModifiedFields() != null) {
                     record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.UPDATE);
                 }
@@ -141,7 +142,7 @@ public class PreparedStatementExecutor {
 
             case CDC_RECORD_STATE_AFTER:
                 insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                        false, config, columnToDataTypeMap, engine, tableName);
+                        false, config, columnToDataTypeMap, engine, tableName, batchSeq);
                 break;
 
             case CDC_RECORD_STATE_BOTH:
@@ -149,13 +150,13 @@ public class PreparedStatementExecutor {
                         engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLACING_MERGE_TREE.getEngine()) ||
                         engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.getEngine()))) {
                     insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                            true, config, columnToDataTypeMap, engine, tableName);
+                            true, config, columnToDataTypeMap, engine, tableName, batchSeq);
                     // 将BEFORE行加入batch, 与后续AFTER行构成两行:
                     // Row N: 旧值+is_deleted=1 → Row N+1: 新值+is_deleted=0
                     ps.addBatch();
                 }
                 insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                        false, config, columnToDataTypeMap, engine, tableName);
+                        false, config, columnToDataTypeMap, engine, tableName, batchSeq);
                 // AFTER行的addBatch由调用方handle_single_record_with_null_value返回后执行
                 break;
 
@@ -178,6 +179,8 @@ public class PreparedStatementExecutor {
         List<ClickHouseStruct> failedRecords = new ArrayList<>();
 
         // Split the records into batches.
+        // globalBatchSeq: 跨partition累计的批次内序号, 保证同一主键跨partition时版本仍然按处理顺序递增.
+        final long[] globalBatchSeq = {0};
         Lists.partition(entry.getValue(), (int)maxRecordsInBatch).forEach(batch -> {
 
             String databaseName = null;
@@ -186,12 +189,15 @@ public class PreparedStatementExecutor {
             DBMetadata metadata = new DBMetadata();
             try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
 
+                long batchSeq = 0;
                 for (ClickHouseStruct record : batch) {
-                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName, columnToDataTypeMap,config,ps,engine)){
+                    batchSeq++;
+                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName, columnToDataTypeMap,config,ps,engine, globalBatchSeq[0] + batchSeq)){
                         continue;
                     }
                     ps.addBatch();
                 }
+                globalBatchSeq[0] += batch.size();
 
                 // ToDo: should we check for EXECUTE_FAILED
                 int[] batchResult = ps.executeBatch();
@@ -223,9 +229,11 @@ public class PreparedStatementExecutor {
             try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
                 ArrayList<ClickHouseStruct> truncatedRecords = new ArrayList<>();
 
+                long batchSeq = 0;
                 for (ClickHouseStruct record : failedRecords) {
+                    batchSeq++;
                     if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName,
-                            columnToDataTypeMap, config, ps, engine)) {
+                            columnToDataTypeMap, config, ps, engine, batchSeq)) {
                         continue;
                     }
                     ps.addBatch();
@@ -257,7 +265,8 @@ public class PreparedStatementExecutor {
                                         ClickHouseStruct record, Struct struct, boolean beforeSection,
                                         ClickHouseSinkConnectorConfig config,
                                         Map<String, String> columnNameToDataTypeMap,
-                                        DBMetadata.TABLE_ENGINE engine, String tableName) throws Exception {
+                                        DBMetadata.TABLE_ENGINE engine, String tableName,
+                                        long batchSeq) throws Exception {
 
 
         // int index = 1;
@@ -379,30 +388,18 @@ public class PreparedStatementExecutor {
                         long versionValue;
                         if (record.getGtid() != -1) {
                             if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
-                                // SnowFlakeId: 63位已打包(GTID占低22位, timestamp占高41位).
-                                // 任何累加都会污染GTID位破坏跨事务顺序, 因此不做任何调整,
-                                // 依赖batch内BEFORE→AFTER→DELETE的固定插入顺序保证ReplacingMergeTree正确合并.
                                 versionValue = SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false);
                             } else {
-                                // GTID-based: 使用位拼接保证跨GTID严格有序.
-                                // 取binlog position作为事务内顺序标识(单调递增),
-                                // GTID左移21位(GTID间隔=2^21), 低21位放pos+after标记.
-                                long orderComponent = 0;
-                                if (record.getPos() > 0) {
-                                    orderComponent = record.getPos();
-                                } else if (record.getLsn() > 0) {
-                                    orderComponent = record.getLsn();
-                                }
-                                versionValue = (record.getGtid() << 21)
-                                        | ((orderComponent & 0xFFFFF) << 1)
-                                        | (beforeSection ? 0 : 1);
+                                versionValue = record.getGtid();
                             }
                         } else {
                             versionValue = record.getSequenceNumber();
-                            if (!beforeSection) {
-                                versionValue += 1;
-                            }
                         }
+                        // 按批次内处理顺序直接加序号, 区分BEFORE/AFTER:
+                        // 同一记录: BEFORE = base + batchSeq*2, AFTER = base + batchSeq*2 + 1 → AFTER > BEFORE
+                        // 同一批次内后处理的记录(如DELETE)有更大的batchSeq → 版本更高
+                        // → ReplacingMergeTree合并时后处理的行必定胜出, 保证UPDATE与DELETE顺序正确.
+                        versionValue = versionValue + (batchSeq * 2L) + (beforeSection ? 0 : 1);
                         ps.setLong(columnNameToIndexMap.get(versionColumn), versionValue);
                     }
 
