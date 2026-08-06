@@ -111,8 +111,7 @@ public class PreparedStatementExecutor {
                                                   Map<String, String> columnToDataTypeMap,
                                                   ClickHouseSinkConnectorConfig config,
                                                   PreparedStatement ps,
-                                                  DBMetadata.TABLE_ENGINE engine,
-                                                  long batchSeq) throws Exception {
+                                                  DBMetadata.TABLE_ENGINE engine) throws Exception {
 
         if(record.getDatabase() != null) {
             databaseName = record.getDatabase();
@@ -134,7 +133,7 @@ public class PreparedStatementExecutor {
         switch (cdcState) {
             case CDC_RECORD_STATE_BEFORE:
                 insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                        true, config, columnToDataTypeMap, engine, tableName, batchSeq);
+                        true, config, columnToDataTypeMap, engine, tableName);
                 if (record.getAfterStruct() != null && record.getAfterModifiedFields() != null) {
                     record.setCdcOperation(ClickHouseConverter.CDC_OPERATION.UPDATE);
                 }
@@ -142,7 +141,7 @@ public class PreparedStatementExecutor {
 
             case CDC_RECORD_STATE_AFTER:
                 insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                        false, config, columnToDataTypeMap, engine, tableName, batchSeq);
+                        false, config, columnToDataTypeMap, engine, tableName);
                 break;
 
             case CDC_RECORD_STATE_BOTH:
@@ -150,13 +149,13 @@ public class PreparedStatementExecutor {
                         engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLACING_MERGE_TREE.getEngine()) ||
                         engine.getEngine().equalsIgnoreCase(DBMetadata.TABLE_ENGINE.REPLICATED_REPLACING_MERGE_TREE.getEngine()))) {
                     insertPreparedStatement(entry.getKey().right, ps, record.getBeforeModifiedFields(), record, record.getBeforeStruct(),
-                            true, config, columnToDataTypeMap, engine, tableName, batchSeq);
+                            true, config, columnToDataTypeMap, engine, tableName);
                     // 将BEFORE行加入batch, 与后续AFTER行构成两行:
                     // Row N: 旧值+is_deleted=1 → Row N+1: 新值+is_deleted=0
                     ps.addBatch();
                 }
                 insertPreparedStatement(entry.getKey().right, ps, record.getAfterModifiedFields(), record, record.getAfterStruct(),
-                        false, config, columnToDataTypeMap, engine, tableName, batchSeq);
+                        false, config, columnToDataTypeMap, engine, tableName);
                 // AFTER行的addBatch由调用方handle_single_record_with_null_value返回后执行
                 break;
 
@@ -179,8 +178,6 @@ public class PreparedStatementExecutor {
         List<ClickHouseStruct> failedRecords = new ArrayList<>();
 
         // Split the records into batches.
-        // globalBatchSeq: 跨partition累计的批次内序号, 保证同一主键跨partition时版本仍然按处理顺序递增.
-        final long[] globalBatchSeq = {0};
         Lists.partition(entry.getValue(), (int)maxRecordsInBatch).forEach(batch -> {
 
             String databaseName = null;
@@ -189,15 +186,12 @@ public class PreparedStatementExecutor {
             DBMetadata metadata = new DBMetadata();
             try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
 
-                long batchSeq = 0;
                 for (ClickHouseStruct record : batch) {
-                    batchSeq++;
-                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName, columnToDataTypeMap,config,ps,engine, globalBatchSeq[0] + batchSeq)){
+                    if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName, columnToDataTypeMap,config,ps,engine)){
                         continue;
                     }
                     ps.addBatch();
                 }
-                globalBatchSeq[0] += batch.size();
 
                 // ToDo: should we check for EXECUTE_FAILED
                 int[] batchResult = ps.executeBatch();
@@ -229,11 +223,9 @@ public class PreparedStatementExecutor {
             try (PreparedStatement ps = metadata.getPreparedStatement(conn, insertQuery)) {
                 ArrayList<ClickHouseStruct> truncatedRecords = new ArrayList<>();
 
-                long batchSeq = 0;
                 for (ClickHouseStruct record : failedRecords) {
-                    batchSeq++;
                     if (!handle_single_record_with_null_value(record, truncatedRecords, bmd, entry, tableName,
-                            columnToDataTypeMap, config, ps, engine, batchSeq)) {
+                            columnToDataTypeMap, config, ps, engine)) {
                         continue;
                     }
                     ps.addBatch();
@@ -265,8 +257,7 @@ public class PreparedStatementExecutor {
                                         ClickHouseStruct record, Struct struct, boolean beforeSection,
                                         ClickHouseSinkConnectorConfig config,
                                         Map<String, String> columnNameToDataTypeMap,
-                                        DBMetadata.TABLE_ENGINE engine, String tableName,
-                                        long batchSeq) throws Exception {
+                                        DBMetadata.TABLE_ENGINE engine, String tableName) throws Exception {
 
 
         // int index = 1;
@@ -395,11 +386,18 @@ public class PreparedStatementExecutor {
                         } else {
                             versionValue = record.getSequenceNumber();
                         }
-                        // 按批次内处理顺序直接加序号, 区分BEFORE/AFTER:
-                        // 同一记录: BEFORE = base + batchSeq*2, AFTER = base + batchSeq*2 + 1 → AFTER > BEFORE
-                        // 同一批次内后处理的记录(如DELETE)有更大的batchSeq → 版本更高
-                        // → ReplacingMergeTree合并时后处理的行必定胜出, 保证UPDATE与DELETE顺序正确.
-                        versionValue = versionValue + (batchSeq * 2L) + (beforeSection ? 0 : 1);
+                        // 用binlog position作为事务内顺序标识:
+                        // pos在binlog内全局单调递增(与poll批次无关), 后发生的事件(DELETE)有更大的pos,
+                        // 因此同一主键的DELETE版本必然高于其UPDATE/INSERT, 跨批次也不会逆序.
+                        // 区分BEFORE/AFTER: AFTER = BEFORE + 1, 确保同位置(同pos)下新值胜出旧值.
+                        // 无pos/lsn的场景(snapshot)不额外处理.
+                        long orderComponent = 0;
+                        if (record.getPos() > 0) {
+                            orderComponent = record.getPos();
+                        } else if (record.getLsn() > 0) {
+                            orderComponent = record.getLsn();
+                        }
+                        versionValue = versionValue + orderComponent + (beforeSection ? 0 : 1);
                         ps.setLong(columnNameToIndexMap.get(versionColumn), versionValue);
                     }
 
