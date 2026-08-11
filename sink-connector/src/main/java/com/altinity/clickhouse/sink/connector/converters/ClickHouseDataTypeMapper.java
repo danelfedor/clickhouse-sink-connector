@@ -184,6 +184,8 @@ public class ClickHouseDataTypeMapper {
 
             } else if (schemaName != null && schemaName.equalsIgnoreCase(Timestamp.SCHEMA_NAME)) {
                 ps.setTimestamp(index, (java.sql.Timestamp) value);
+            } else if (schemaName != null && schemaName.equalsIgnoreCase(Time.SCHEMA_NAME)) {
+                ps.setString(index, DebeziumConverter.TimeConverter.convert(value));
             } else {
                 ps.setInt(index, (Integer) value);
             }

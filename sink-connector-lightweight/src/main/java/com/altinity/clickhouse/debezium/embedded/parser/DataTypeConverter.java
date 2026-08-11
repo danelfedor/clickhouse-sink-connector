@@ -74,6 +74,10 @@ public class DataTypeConverter {
 
         ClickHouseDataType chDataType = ClickHouseDataTypeMapper.getClickHouseDataType(schemaBuilder.schema().type(), schemaBuilder.schema().name());
 
+        if (schemaBuilder.schema().name() != null && schemaBuilder.schema().name().equalsIgnoreCase(io.debezium.time.Time.SCHEMA_NAME)) {
+            return "Time";
+        }
+
         if (precision > 0) {
             StringBuffer convertedStringBuf = new StringBuffer();
             convertedStringBuf.append(chDataType.toString()).append("(").append(precision);
