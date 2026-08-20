@@ -1,4 +1,4 @@
-FROM openjdk:17-ea-slim
+FROM eclipse-temurin:17-jre-jammy
 ARG DOCKER_TAG
 ENV DOCKER_TAG=${DOCKER_TAG}
 COPY sink-connector-client/sink-connector-client /sink-connector-client
