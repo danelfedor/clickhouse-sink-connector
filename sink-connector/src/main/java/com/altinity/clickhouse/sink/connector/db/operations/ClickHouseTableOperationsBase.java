@@ -4,6 +4,7 @@ import com.altinity.clickhouse.sink.connector.converters.ClickHouseDataTypeMappe
 import com.clickhouse.data.ClickHouseDataType;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
 import org.apache.kafka.connect.data.Field;
@@ -46,6 +47,10 @@ public class ClickHouseTableOperationsBase {
                 schemaName = f.schema().valueSchema().type().name();
                 ClickHouseDataType dt = mapper.getClickHouseDataType(f.schema().valueSchema().type(), null);
                 columnToDataTypesMap.put(colName, "Array(" + dt.name() + ")");
+                continue;
+            }
+            if(schemaName != null && schemaName.equalsIgnoreCase(Time.SCHEMA_NAME)) {
+                columnToDataTypesMap.put(colName, "Time");
                 continue;
             }
             // Input:

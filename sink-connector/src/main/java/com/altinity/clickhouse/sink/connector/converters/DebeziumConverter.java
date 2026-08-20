@@ -41,6 +41,19 @@ public class DebeziumConverter {
         }
     }
 
+    public static class TimeConverter {
+        public static String convert(Object value) {
+            long millis = ((Number) value).longValue();
+            boolean negative = millis < 0;
+            long absMillis = Math.abs(millis);
+            long totalSeconds = absMillis / 1000;
+            long hours = totalSeconds / 3600;
+            long minutes = (totalSeconds % 3600) / 60;
+            long seconds = totalSeconds % 60;
+            return String.format("%s%02d:%02d:%02d", negative ? "-" : "", hours, minutes, seconds);
+        }
+    }
+
     public static class MicroTimestampConverter {
         // DATETIME(4), DATETIME(5), DATETIME(6)
         // Represents the number of microseconds past the epoch and does not include time zone information.

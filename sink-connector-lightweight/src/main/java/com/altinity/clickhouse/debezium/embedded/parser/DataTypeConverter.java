@@ -74,6 +74,10 @@ public class DataTypeConverter {
 
         ClickHouseDataType chDataType = ClickHouseDataTypeMapper.getClickHouseDataType(schemaBuilder.schema().type(), schemaBuilder.schema().name());
 
+        if (schemaBuilder.schema().name() != null && schemaBuilder.schema().name().equalsIgnoreCase(io.debezium.time.Time.SCHEMA_NAME)) {
+            return "Time";
+        }
+
         // Separate handling for DateTime and DateTime64
         if(userProvidedTimeZone != null && (chDataType == ClickHouseDataType.DateTime || chDataType == ClickHouseDataType.DateTime32)) {
             return new StringBuffer().append(chDataType).append("(").append("'").append(userProvidedTimeZone).append("'").append(")").toString();
