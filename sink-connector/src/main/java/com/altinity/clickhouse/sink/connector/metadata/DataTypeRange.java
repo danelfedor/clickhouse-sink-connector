@@ -17,9 +17,9 @@ public class DataTypeRange
 
 
     // DateTime64 内部是Int64, 范围由精度决定: DateTime64(3)可表示±2.9亿年, DateTime64(6)±29万年.
-    // 上限设为SQL Server datetime2/datetime 的最大值9999-12-31, 覆盖源库全部可能值.
+    // 上限/下限设为SQL Server datetime2 的范围(0001-01-01 ~ 9999-12-31), 覆盖源库全部可能值.
     public static final long DATETIME64_MAX = LocalDateTime.of(LocalDate.of(9999, 12, 31), LocalTime.MAX).toEpochSecond(ZoneOffset.UTC);
-    public static final long DATETIME64_MIN = LocalDateTime.of(LocalDate.of(1900, 1, 1), LocalTime.MIN).toEpochSecond(ZoneOffset.UTC);
+    public static final long DATETIME64_MIN = LocalDateTime.of(LocalDate.of(1, 1, 1), LocalTime.MIN).toEpochSecond(ZoneOffset.UTC);
 
     // DateTime
     public static final Instant CLICKHOUSE_MIN_SUPPORTED_DATETIME64 = from(ofEpochMilli
