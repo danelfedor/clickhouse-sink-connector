@@ -384,7 +384,10 @@ public class PreparedStatementExecutor {
                                 versionValue = record.getGtid();
                             }
                         } else {
-                            versionValue = record.getSequenceNumber();
+                            // sequenceNumber每记录递增1, ×2给flag(+0/+1)留位,
+                            // 避免相邻记录版本重叠(如: 记录N的AFTER与记录N+1的DELETE版本相同,
+                            // 同LSN内同一行的UPDATE/DELETE序列合并结果不确定).
+                            versionValue = record.getSequenceNumber() * 2L;
                         }
                         // 用binlog position作为事务内顺序标识:
                         // pos在binlog内全局单调递增(与poll批次无关), 后发生的事件(DELETE)有更大的pos,
