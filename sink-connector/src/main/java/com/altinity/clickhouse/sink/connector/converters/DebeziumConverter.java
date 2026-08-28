@@ -213,10 +213,12 @@ public class DebeziumConverter {
                     ZonedDateTime zd = ZonedDateTime.parse((String) value, formatter.withZone(serverTimezone));
 
                     long dateTimeInMs = zd.toInstant().toEpochMilli();
-                    if(dateTimeInMs > BinaryStreamUtils.DATETIME64_MAX * 1000) {
-                        zd = ZonedDateTime.ofInstant(Instant.ofEpochSecond(BinaryStreamUtils.DATETIME64_MAX), serverTimezone);
-                    } else if(dateTimeInMs < BinaryStreamUtils.DATETIME64_MIN * 1000) {
-                        zd = ZonedDateTime.ofInstant(Instant.ofEpochSecond(BinaryStreamUtils.DATETIME64_MIN), serverTimezone);
+                    // 使用DataTypeRange(0001-01-01~9999-12-31)而非BinaryStreamUtils(1900~2299),
+                    // 避免SQL Server 3000年等超范围值被错误截断.
+                    if(dateTimeInMs > DataTypeRange.CLICKHOUSE_MAX_SUPPORTED_DATETIME64.toEpochMilli()) {
+                        zd = ZonedDateTime.ofInstant(DataTypeRange.CLICKHOUSE_MAX_SUPPORTED_DATETIME64, serverTimezone);
+                    } else if(dateTimeInMs < DataTypeRange.CLICKHOUSE_MIN_SUPPORTED_DATETIME64.toEpochMilli()) {
+                        zd = ZonedDateTime.ofInstant(DataTypeRange.CLICKHOUSE_MIN_SUPPORTED_DATETIME64, serverTimezone);
                     }
                     result = zd.format(destFormatter);
                     parsingSuccesful = true;
