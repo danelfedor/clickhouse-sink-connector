@@ -12,6 +12,7 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser.TableNameContext;
 import io.debezium.relational.ddl.DataType;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -209,6 +210,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
         boolean isNullColumn = true;
         boolean isGeneratedColumn = false;
         String generatedColumn = "";
+        String columnComment = null;
 
         for (ParseTree colDefTree : ((MySqlParser.ColumnDeclarationContext) subtree).children) {
             if (colDefTree instanceof MySqlParser.FullColumnNameContext) {
@@ -218,6 +220,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 String colDataTypeDefinition = colDefTree.getText();
 
                 colDataType = getClickHouseDataType(colDataTypeDefinition, colDefTree, columnName);
+                columnComment = null;
                 // Null Column and DimensionDataType are children of ColumnDefinition
                 for(ParseTree colDefinitionChildTree: ((MySqlParser.ColumnDefinitionContext) colDefTree).children) {
                     if (colDefinitionChildTree instanceof MySqlParser.NullColumnConstraintContext) {
@@ -242,8 +245,16 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                             }
                         }
 
+                    } else if (colDefinitionChildTree instanceof MySqlParser.CommentColumnConstraintContext) {
+                        // COMMENT 'xxx' → ClickHouse列注释
+                        TerminalNode commentNode = ((MySqlParser.CommentColumnConstraintContext) colDefinitionChildTree).STRING_LITERAL();
+                        if (commentNode != null) {
+                            columnComment = commentNode.getText();
+                        }
                     }
                 }
+                // 列注释: ClickHouse语法 col Type COMMENT 'xxx'
+                String commentClause = (columnComment == null) ? "" : " COMMENT " + columnComment;
                 if(isGeneratedColumn) {
                     if(isNullColumn){
                         this.query.append(Constants.NULLABLE).append("(").append(colDataType)
@@ -251,7 +262,7 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                     } else
                         this.query.append(colDataType);
 
-                    this.query.append(" ").append(Constants.ALIAS).append(" ").append(generatedColumn).append(",");
+                    this.query.append(commentClause).append(" ").append(Constants.ALIAS).append(" ").append(generatedColumn).append(",");
                     continue;
                 }
 
@@ -259,10 +270,11 @@ public class MySqlDDLParserListenerImpl extends MySQLDDLParserBaseListener {
                 String lowerCaseDataType = colDataType.toLowerCase();
                 if(!Constants.NULLABLE_NOT_SUPPORTED_DATA_TYPES.contains(lowerCaseDataType) && isNullColumn) {
                     this.query.append(Constants.NULLABLE).append("(").append(colDataType)
-                            .append(")").append(",");
+                            .append(")").append(commentClause).append(",");
                 }
                 else {
-                    this.query.append(colDataType).append(" ").append(Constants.NOT_NULLABLE).append(" ").append(",");
+                    // 非nullable列不输出NOT NULL修饰符(ClickHouse列默认NOT NULL, 部分解析器不支持该语法)
+                    this.query.append(colDataType).append(commentClause).append(",");
                 }
                 columnNames.add(columnName);
             }

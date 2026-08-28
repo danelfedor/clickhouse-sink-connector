@@ -72,10 +72,10 @@ public class ClickHouseAutoCreateTable extends ClickHouseTableOperationsBase{
                 // ignore adding nulls;
             } else {
                 if (isNull) {
-                    createTableSyntax.append(" ").append(NULL);
-                } else {
-                    createTableSyntax.append(" ").append(NOT_NULL);
+                    // nullable列用Nullable(T)包裹, 不使用NULL修饰符(部分ClickHouse解析器不支持)
+                    createTableSyntax.append(" ").append("Nullable(").append(dataType).append(")");
                 }
+                // 非nullable列不输出修饰符(ClickHouse列默认NOT NULL)
             }
             createTableSyntax.append(",");
 
