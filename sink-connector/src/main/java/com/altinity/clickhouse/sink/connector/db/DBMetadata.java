@@ -148,7 +148,11 @@ public class DBMetadata {
         while (retryCount < MAX_RETRIES) {
             try {
                 conn = HikariDbSource.initiateNewConnectionIfClosed(conn, database);
-                ResultSet columns = conn.getMetaData().getColumns(database, null,
+                // 库名必须放在 schemaPattern(第2个参数)位:
+                // clickhouse-jdbc 把 database 映射为 schema(getCatalog() 返回 null),
+                // 传在 catalog 位会被驱动忽略, schemaPattern=null 时等于不做库过滤,
+                // 于是同一台 server 上所有同名表(跨库)的列会被合并成并集返回。
+                ResultSet columns = conn.getMetaData().getColumns(null, database,
                     tableName, null);
                 while (columns.next()) {
                     String columnName = columns.getString("COLUMN_NAME");
