@@ -413,11 +413,12 @@ public class PreparedStatementExecutor {
      * 有gtid(MySQL): version = (SnowFlakeId(ts,gtid)或gtid) + orderComponent(pos/lsn) + flag
      *   同事务内事件顺序靠pos加法定序
      *
-     * 无gtid(SQL Server): version = SnowFlakeId(ts_ms, sequenceNumber*2 + flag)  位拼接, 可反推时间戳
-     *   布局: [ts_ms-epoch(41位)] [sequenceNumber*2+flag(22位)]
-     *   反推: version >> 22 + SNOWFLAKE_EPOCH = ts_ms(毫秒)
-     *   sequenceNumber入队时按CDC捕获顺序逐行+1分配, ×2给flag留位:
-     *   AFTER(2K+1) > BEFORE(2K), 行级唯一 → 同事务混合DML合并结果确定
+     * 无gtid(SQL Server): version = SnowFlakeId(ts_ms, 毫秒内序号*2 + flag)  位拼接, 可反推时间戳
+     *   布局: [ts_ms-EPOCH(41位)] [序号*2+flag(22位)]
+     *   反推: (version >> 22) + SNOWFLAKE_EPOCH = ts_ms(毫秒)
+     *   序号由 addVersion() 按"同一 ts_ms 内从 0 起递增"分配(见 DebeziumChangeEventCapture),
+     *   跨毫秒的先后由高位的 ts_ms 保证, 低位只需毫秒内严格递增:
+     *   AFTER(2K+1) > BEFORE(2K), 同一毫秒内超过 2^21 条变更才会回绕
      */
     private long calculateVersionId(ClickHouseStruct record, boolean beforeSection,
                                     ClickHouseSinkConnectorConfig config) {
