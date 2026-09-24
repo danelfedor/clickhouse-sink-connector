@@ -614,39 +614,36 @@ public class DebeziumChangeEventCapture {
 
     }
 
-    public static final long SEQUENCE_START = 1000000000;
-    public static final long SEQUENCE_START_INITIAL = 500000000;
+    /**
+     * 同一 ts_ms(源库事件时间)内的记录序号, 从 0 开始, ts_ms 变化即归零.
+     *
+     * 低位只需要"同一毫秒内严格递增"这一个性质, 跨毫秒的先后由版本号高位的 ts_ms 保证,
+     * 因此不再把序号 pad 成 (debezium_ts_ms * 1e6 + N) 的大数 —— 那样只有低 22 位有效,
+     * 残数每 2^21 行就会回绕.
+     *
+     * 用静态字段维持跨批次连续性: 同一毫秒的记录即使落在不同批次, 序号也不会重复
+     * (否则同毫秒、同主键的两条变更会拿到相同版本号, 合并结果不确定).
+     */
+    public static long sequenceNumber = 0;
+    private static long lastSequenceTsMs = Long.MIN_VALUE;
 
-    public static long sequenceNumber = SEQUENCE_START;
     /**
      * Function to add version to every record.
      * @param chStructs
      */
     public static void addVersion(List<ClickHouseStruct> chStructs) {
 
-        // Start the sequence from 1 million and increment for every record
-        // and reset the sequence back to 1 million in the next second
         if(chStructs.isEmpty()) {
             return;
         }
-        long sequenceStartTime = chStructs.get(0).getDebezium_ts_ms();
-        //long sequence = SEQUENCE_START;
-
         for(ClickHouseStruct chStruct: chStructs) {
-            // Get the first ts_ms from chStruct
-            // Subsequent records add 1 to sequence.
-            // If its been more than a second from the first
-            // ts_ms then reset the sequence.
-            // Get diff in seconds
-            int diff = (int) (chStruct.getDebezium_ts_ms() - sequenceStartTime) / 1000;
-            if(diff > 1) {
-                sequenceNumber = SEQUENCE_START;
-                sequenceStartTime = chStruct.getDebezium_ts_ms();
-            }   else {
+            if(chStruct.getTs_ms() != lastSequenceTsMs) {
+                lastSequenceTsMs = chStruct.getTs_ms();
+                sequenceNumber = 0;
+            } else {
                 sequenceNumber++;
             }
-            // Pad the sequence number with 0s
-            chStruct.setSequenceNumber(chStruct.getDebezium_ts_ms() * 1000000 + sequenceNumber);
+            chStruct.setSequenceNumber(sequenceNumber);
         }
     }
 }
