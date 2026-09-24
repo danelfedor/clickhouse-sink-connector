@@ -376,32 +376,7 @@ public class PreparedStatementExecutor {
             if (columnNameToDataTypeMap.containsKey(versionColumn)) {
 
                     if(columnNameToIndexMap.containsKey(versionColumn)) {
-                        long versionValue;
-                        if (record.getGtid() != -1) {
-                            if(config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
-                                versionValue = SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false);
-                            } else {
-                                versionValue = record.getGtid();
-                            }
-                        } else {
-                            // sequenceNumber每记录递增1, ×2给flag(+0/+1)留位,
-                            // 避免相邻记录版本重叠(如: 记录N的AFTER与记录N+1的DELETE版本相同,
-                            // 同LSN内同一行的UPDATE/DELETE序列合并结果不确定).
-                            versionValue = record.getSequenceNumber() * 2L;
-                        }
-                        // 用binlog position作为事务内顺序标识:
-                        // pos在binlog内全局单调递增(与poll批次无关), 后发生的事件(DELETE)有更大的pos,
-                        // 因此同一主键的DELETE版本必然高于其UPDATE/INSERT, 跨批次也不会逆序.
-                        // 区分BEFORE/AFTER: AFTER = BEFORE + 1, 确保同位置(同pos)下新值胜出旧值.
-                        // 无pos/lsn的场景(snapshot)不额外处理.
-                        long orderComponent = 0;
-                        if (record.getPos() > 0) {
-                            orderComponent = record.getPos();
-                        } else if (record.getLsn() > 0) {
-                            orderComponent = record.getLsn();
-                        }
-                        versionValue = versionValue + orderComponent + (beforeSection ? 0 : 1);
-                        ps.setLong(columnNameToIndexMap.get(versionColumn), versionValue);
+                        ps.setLong(columnNameToIndexMap.get(versionColumn), calculateVersionId(record, beforeSection, config));
                     }
 
             }
@@ -430,6 +405,39 @@ public class PreparedStatementExecutor {
                 }
             }
         }
+    }
+
+    /**
+     * 计算ReplacingMergeTree版本号.
+     *
+     * 有gtid(MySQL): version = (SnowFlakeId(ts,gtid)或gtid) + orderComponent(pos/lsn) + flag
+     *   同事务内事件顺序靠pos加法定序
+     *
+     * 无gtid(SQL Server): version = SnowFlakeId(ts_ms, sequenceNumber*2 + flag)  位拼接, 可反推时间戳
+     *   布局: [ts_ms-epoch(41位)] [sequenceNumber*2+flag(22位)]
+     *   反推: version >> 22 + SNOWFLAKE_EPOCH = ts_ms(毫秒)
+     *   sequenceNumber入队时按CDC捕获顺序逐行+1分配, ×2给flag留位:
+     *   AFTER(2K+1) > BEFORE(2K), 行级唯一 → 同事务混合DML合并结果确定
+     */
+    private long calculateVersionId(ClickHouseStruct record, boolean beforeSection,
+                                    ClickHouseSinkConnectorConfig config) {
+        if (record.getGtid() != -1) {
+            long base;
+            if (config.getBoolean(ClickHouseSinkConnectorConfigVariables.SNOWFLAKE_ID.toString())) {
+                base = SnowFlakeId.generate(record.getTs_ms(), record.getGtid(), false);
+            } else {
+                base = record.getGtid();
+            }
+            long orderComponent = 0;
+            if (record.getPos() > 0) {
+                orderComponent = record.getPos();
+            } else if (record.getLsn() > 0) {
+                orderComponent = record.getLsn();
+            }
+            return base + orderComponent + (beforeSection ? 0 : 1);
+        }
+        return SnowFlakeId.generate(record.getTs_ms(),
+                record.getSequenceNumber() * 2L + (beforeSection ? 0 : 1), false);
     }
 
     /**
