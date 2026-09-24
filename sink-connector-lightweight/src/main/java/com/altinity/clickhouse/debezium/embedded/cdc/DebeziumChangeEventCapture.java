@@ -498,10 +498,8 @@ public class DebeziumChangeEventCapture {
             } catch (Exception e) {
                 log.error("Exception processing record", e);
             }
-            if (lastRecordInBatch) {
-                appendToRecords(config);
-            }
         }
+        appendToRecords(config);
     }
 
     @VisibleForTesting
